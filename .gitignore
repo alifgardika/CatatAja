@@ -1,0 +1,12 @@
+# Environment & secrets
+.env
+*.key
+credentials/
+
+# Apps Script / Clasp
+.clasp.json
+.clasprc.json
+
+# OS
+.DS_Store
+Thumbs.db
