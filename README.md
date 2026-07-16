@@ -1,5 +1,7 @@
 # CatatAja
 
+Baca dalam bahasa lain: **[Bahasa Indonesia (README_ID.md)](README_ID.md)**
+
 Serverless expense tracker for Telegram. Type transactions in plain Indonesian, the bot parses them with Gemini AI and writes them to a Google Sheet.
 
 Runs entirely on Google Apps Script — no server, no hosting cost, no dependencies to install.
