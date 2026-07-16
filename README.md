@@ -1,170 +1,172 @@
-# 🤖 CatatAja
+# CatatAja
 
-> Chat, catat, selesai. ⚡
+Serverless expense tracker for Telegram. Type transactions in plain Indonesian, the bot parses them with Gemini AI and writes them to a Google Sheet.
 
-CatatAja — pencatat keuangan pribadi berbasis AI untuk Telegram. Cukup ketik transaksimu dengan bahasa natural — bot otomatis memahami nominal, kategori, dan metode pembayaran, lalu menyimpannya ke Google Sheets.
-
-**"beli kopi 25k"** → bot catat: Transfer • JAGO • Makanan • Rp 25.000
+Runs entirely on Google Apps Script — no server, no hosting cost, no dependencies to install.
 
 ---
 
-## ✨ Fitur
+## How it works
 
-- 🤖 **Natural Language Parsing** — Ketik "beli kopi 25k", bot otomatis catat. Tidak perlu format kaku.
-- 📊 **Google Sheets** — Data langsung tersimpan di spreadsheet kamu
-- 🧠 **Gemini AI** — Memahami singkatan (rb/jt/k), tanggal relatif ("kemarin"), dan metode pembayaran
-- 🔒 **Anti Prompt Injection** — Aman dari manipulasi AI
-- 👤 **Access Control** — Hanya Chat ID terdaftar yang bisa pakai bot
-- 📝 **Manual Input** — Tetap bisa pakai `/tambahdata` format semicolon
-- ✏️ **Edit-in-place** — Pesan "⏳ Memproses" berubah jadi hasil, tanpa pesan baru
+You send a normal message:
+
+```
+beli kopi 25k
+```
+
+The bot replies (edits the same message, no spam):
+
+```
+Tercatat!
+
+Transfer
+beli kopi
+Makanan - JAGO
+Rp 25.000
+17 Juli 2026
+```
+
+The row lands in your Google Sheet's "Expenses" tab.
 
 ---
 
-## 📋 Contoh Penggunaan
+## Examples
 
-| Pesan | Transaksi | Bank | Kategori | Nilai |
-|-------|-----------|------|----------|-------|
+| You type | Method | Bank | Category | Amount |
+|----------|--------|------|----------|--------|
 | `beli kopi 25k` | Transfer | JAGO | Makanan | 25.000 |
 | `bayar shopee 120k` | Transfer | JAGO | Belanja | 120.000 |
 | `makan siang 15k tunai` | Cash | CASH | Makanan | 15.000 |
 | `jual server 150k` | Transfer | JAGO | server | 150.000 |
 | `beli groceries 120rb BCA kemarin` | Transfer | BCA | Belanja | 120.000 |
 
-Default metode = **Transfer** dan bank = **JAGO**. Sebut "tunai" untuk Cash, atau sebut nama bank lain.
+Default method is Transfer, default bank is JAGO. Say "tunai" or "cash" to switch to Cash. Name a bank to override JAGO.
+
+The bot understands amount shorthand: `rb`/`ribu`/`k` = thousand, `jt`/`juta` = million. It also parses relative dates: `kemarin`, `2 hari lalu`, `tgl 13`, `minggu lalu`.
 
 ---
 
-## 🚀 Setup
+## Setup
 
-### 1. Buat Telegram Bot
+### 1. Create a Telegram bot
 
-1. Buka Telegram, chat [@BotFather](https://t.me/botfather)
-2. Kirim `/newbot`, ikuti instruksi
-3. Simpan **Bot Token**
+Open [@BotFather](https://t.me/botfather), send `/newbot`, follow the prompts. Save the bot token.
 
-### 2. Dapatkan Chat ID
+### 2. Get your Chat ID
 
-1. Chat [@userinfobot](https://t.me/userinfobot) di Telegram
-2. Simpan angka **Chat ID** Anda
+Open [@userinfobot](https://t.me/userinfobot) and send any message. It replies with your numeric Chat ID.
 
-### 3. Dapatkan Gemini API Key
+### 3. Get a Gemini API key
 
-1. Buka https://aistudio.google.com/apikey
-2. Buat API key gratis
-3. Simpan key-nya
+Go to https://aistudio.google.com/apikey and create a free key.
 
-### 4. Clone Spreadsheet Template
+### 4. Copy the spreadsheet template
 
-1. Buka [template spreadsheet](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2GDH4JXVhxa0sQqH1vF3m_QxufEPNQrNc/edit?usp=sharing)
-2. Klik **File → Make a copy** untuk menyalin ke Google Drive Anda
-3. Buka salinan tersebut
+Open the [template sheet](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2GDH4JXVhxa0sQqH1vF3m_QxufEPNQrNc/edit?usp=sharing), then **File > Make a copy** to your own Drive.
 
-### 5. Setup Google Apps Script
+### 5. Open Apps Script
 
-1. Di spreadsheet kamu, klik **Extensions → Apps Script**
-2. Hapus kode default, ganti dengan isi file `Kode.gs` dari repo ini
-3. Buat file baru di project, beri nama `webhook`, paste isi `webhook.gs`
-4. Isi konfigurasi di bagian atas `Kode.gs`:
+In your copied spreadsheet, click **Extensions > Apps Script**.
+
+### 6. Add the code
+
+- Replace the default `Code.gs` content with `Kode.gs` from this repo.
+- Create a second file named `webhook` and paste `webhook.gs` into it.
+- Fill in the config at the top of `Kode.gs`:
 
 ```javascript
-var BOT_TOKEN = "your_bot_token";        // dari @BotFather
-var USERS = [your_chat_id];               // dari @userinfobot
-var GEMINI_API_KEY = "your_gemini_key";   // dari aistudio.google.com
+var BOT_TOKEN = "your_bot_token";
+var USERS = [your_chat_id];
+var GEMINI_API_KEY = "your_gemini_key";
 ```
 
-### 6. Deploy sebagai Web App
+### 7. Deploy as a web app
 
-1. Klik **Deploy → New deployment**
-2. Pilih **Web app**
-3. Setting:
-   - **Execute as**: Me
-   - **Who has access**: Anyone
-4. Klik **Deploy**, authorize jika diminta
-5. Copy **Web App URL**
+- **Deploy > New deployment > Web app**
+- Execute as: Me
+- Who has access: Anyone
+- Deploy and authorize when prompted
+- Copy the Web App URL
 
-### 7. Set Webhook
+### 8. Register the webhook
 
-1. Buka file `webhook.gs`, isi `token` dan `url`:
+In `webhook.gs`, fill in your token and the Web App URL:
 
 ```javascript
-var token = "your_bot_token";       // sama dengan BOT_TOKEN
-var url = "your_webapp_url";         // Web App URL dari langkah 6
+var token = "your_bot_token";
+var url = "your_webapp_url";
 ```
 
-2. Pilih function `setWebhook` di dropdown atas
-3. Klik **Run**
-4. Cek **Execution log** — harus ada `"ok":true`
+Select the `setWebhook` function and click Run. Check the execution log — it should return `"ok":true`.
 
-### 8. Test! 🎉
+### 9. Test
 
-Buka bot di Telegram, kirim `/start`, lalu coba:
+Open your bot in Telegram, send `/start`, then try:
 
 ```
 beli kopi 25k
 ```
 
-Bot akan membalas:
-
-```
-✅ Tercatat!
-
-📌 Transfer
-📝 beli kopi
-🏷 Makanan • JAGO
-💰 Rp 25.000
-📅 17 Juli 2026
-```
-
 ---
 
-## ⚙️ Kustomisasi
+## Configuration
 
-Edit bagian config di atas `Kode.gs`:
+Edit the top of `Kode.gs`:
 
 ```javascript
-var BANKS = ["JAGO", "BCA", "CASH"];                          // pilihan bank di dropdown sheet
+var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 ```
 
-**Penting:** Nilai `BANKS` dan `KATEGORI` harus cocok dengan data validation (dropdown) di Google Sheets kamu. Jika tidak cocok, data akan ditolak oleh sheet.
+These must match the data validation (dropdowns) in your Google Sheet columns D, F, and G. If they don't match, the sheet rejects the write.
 
 ---
 
-## 📊 Struktur Spreadsheet
+## Spreadsheet structure
 
-| Kolom | Header | Tipe | Validasi |
-|-------|--------|------|----------|
-| A | Cek | Checkbox | — |
-| B | Tanggal | Date | — |
-| C | Bulan | Text | — |
-| D | Transaksi | Dropdown | Transfer / Cash |
-| E | Uraian | Text | — |
-| F | Kategori | Dropdown | (sesuai config) |
-| G | Bank | Dropdown | (sesuai config) |
-| H | Nilai | Number | — |
-
-Template sudah punya dropdown validation di kolom D, F, G. Pastikan config di `Kode.gs` cocok.
+| Column | Field | Validation |
+|--------|-------|------------|
+| A | Cek (checkbox) | — |
+| B | Tanggal | — |
+| C | Bulan | — |
+| D | Transaksi | Transfer / Cash |
+| E | Uraian | — |
+| F | Kategori | dropdown |
+| G | Bank | dropdown |
+| H | Nilai | number |
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
-| Masalah | Solusi |
-|---------|--------|
-| `❌ AI gagal merespon` | Cek Gemini API key. Jalankan `testGeminiConnection` di editor Apps Script |
-| `❌ Validation error` | Nilai AI tidak cocok dropdown sheet. Jalankan `testAddToSheet` untuk cek |
-| Bot tidak merespon | Webhook URL salah. Jalankan ulang `setWebhook` dengan URL benar |
-| `429 quota exceeded` | Free tier Gemini terbatas. Tunggu reset harian atau enable billing |
-| Model `404 not found` | Nama model sudah deprecated. Jalankan `listGeminiModels` untuk lihat model tersedia |
+Run these functions from the Apps Script editor to diagnose problems:
 
-### Function test di editor Apps Script
+| Function | What it checks |
+|----------|----------------|
+| `testGeminiConnection` | Whether your API key works and which models respond |
+| `listGeminiModels` | Lists every model your key can access |
+| `testAddToSheet` | Whether data can be written to the sheet without errors |
 
-- `testGeminiConnection` — cek apakah API key Gemini valid & model tersedia
-- `listGeminiModels` — list semua model yang bisa dipakai API key kamu
-- `testAddToSheet` — cek apakah data bisa ditulis ke sheet tanpa error
+Common issues:
+
+- **AI gagal merespon** — API key missing or invalid. Run `testGeminiConnection`.
+- **Validation error** — AI output doesn't match a sheet dropdown. Run `testAddToSheet`.
+- **Bot not responding** — Webhook URL is wrong. Re-run `setWebhook` with the correct URL.
+- **429 quota exceeded** — Free-tier Gemini limit hit. Resets daily, or enable billing.
+- **404 model not found** — Model name deprecated. Run `listGeminiModels` to get current names.
 
 ---
 
-## 📝 Lisensi
+## Manual input
 
-MIT — Bebas digunakan dan dimodifikasi.
+If AI is unavailable, you can still add entries with the semicolon format:
+
+```
+/tambahdata Transfer;makan;Makanan;JAGO;25000
+```
+
+---
+
+## License
+
+MIT

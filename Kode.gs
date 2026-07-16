@@ -2,7 +2,7 @@
 var BOT_TOKEN = "change_your_key"; // Ganti dengan TOKEN BOT Anda (dari @BotFather)
 var USERS = [123456789]; // Ganti dengan CHAT ID Anda (cek via @userinfobot)
 
-// AI CONFIG — Natural Language Parser (Gemini)
+// AI CONFIG - Natural Language Parser (Gemini)
 // Dapatkan API key gratis di https://aistudio.google.com/apikey
 var GEMINI_API_KEY = "change_your_key"; // ISI dengan API key Gemini kamu
 var AI_MODELS = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
@@ -26,9 +26,9 @@ function doGet(e) {
 function doPost(e) {
   if (e.postData.type == "application/json") {
     let update = JSON.parse(e.postData.contents);
-    
+
     if (update.callback_query) {
-      handleCallbackQuery(update.callback_query); // Tangani callback
+      handleCallbackQuery(update.callback_query);
     } else if (update.message) {
       handleCommands(update);
     }
@@ -40,32 +40,27 @@ function handleCallbackQuery(callbackQuery) {
   let chatId = callbackQuery.message.chat.id;
   let data = callbackQuery.data;
 
-  // Tanggapi callback query agar tidak loading
   answerCallbackQuery(callbackQuery.id);
 
   if (USERS.includes(chatId)) {
     if (data === "/tambahdata") {
       sendMessage({
         chat_id: chatId,
-        text: "Masukkan data dengan format: /tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+        text: "Masukkan data dengan format:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
       });
     } else if (data === "/format") {
       sendMessage({
         chat_id: chatId,
-        text: `Berikut adalah format yang dapat Anda gunakan:\n\n` +
-              `| Bank  | Kategori  |\n` +
-              `|-------|-----------|\n` +
-              `| JAGO  | Makanan   |\n` +
-              `| BCA   | Belanja   |\n` +
-              `| DANA  | Cicilan   |\n` +
-              `| CASH  | Tabungan  |\n` +
-              `|       | Hiburan   |`
+        text: "Format yang tersedia:\n\n" +
+              "Transaksi: Transfer / Cash\n" +
+              "Bank: " + BANKS.join(" / ") + "\n" +
+              "Kategori: " + KATEGORI.join(" / ")
       });
     }
   } else {
     sendMessage({
       chat_id: chatId,
-      text: "🚫 Anda tidak memiliki akses untuk menggunakan bot ini."
+      text: "Anda tidak memiliki akses untuk menggunakan bot ini."
     });
   }
 }
@@ -79,11 +74,12 @@ function handleCommands(update) {
     if (text.startsWith("/start")) {
       sendMessage({
         chat_id: chatId,
-        text: `🙋🏽 Halo, ${first_name}!\n\nSelamat datang di CatatAja! Cukup ketik transaksimu seperti biasa, contoh:\n\n` +
-              `💸 "Bayar makan di warteg 15rb"\n` +
-              `💰 "Gaji masuk 5jt JAGO"\n` +
-              `🛒 "Belanja groceries 120rb BCA kemarin"\n\n` +
-              `Bot akan otomatis mencatat ke sheet. Tetap bisa pakai /tambahdata untuk format manual.`,
+        text: "Halo, " + first_name + ".\n\nIni CatatAja. Ketik transaksimu langsung, contoh:\n\n" +
+              "beli kopi 25k\n" +
+              "gaji masuk 5jt JAGO\n" +
+              "belanja groceries 120rb BCA kemarin\n\n" +
+              "Bot akan mencatat otomatis ke sheet. " +
+              "Pakai /tambahdata untuk format manual.",
         reply_markup: {
           inline_keyboard: [
             [{ text: "Tambah Data", callback_data: "/tambahdata" }],
@@ -113,80 +109,77 @@ function handleCommands(update) {
             addDataToSheet(data);
             sendMessage({
               chat_id: chatId,
-              text: `✅ Data berhasil ditambahkan: ${dataString}`
+              text: "Tercatat: " + dataString
             });
           } catch (error) {
             console.error("Error adding data to sheet:", error);
             sendMessage({
               chat_id: chatId,
-              text: `❌ Gagal menambahkan data. Silakan coba lagi.`
+              text: "Gagal menambahkan data. Silakan coba lagi."
             });
           }
         } else {
           sendMessage({
             chat_id: chatId,
-            text: `⚠️ Format data salah. Pastikan Anda menggunakan format yang benar.`
+            text: "Format data salah. Gunakan: /tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
           });
         }
       } else {
         sendMessage({
           chat_id: chatId,
-          text: `⚠️ Silakan masukkan data setelah perintah. Contoh: /tambahdata Transaksi;Uraian;Kategori;Bank;Nilai`
+          text: "Masukkan data setelah perintah. Contoh: /tambahdata Transfer;makan;Makanan;JAGO;25000"
         });
       }
     } else if (!text.startsWith("/")) {
-      // Natural Language Parser: chat bebas → AI parsing → catat otomatis
       handleNaturalLanguage(chatId, text);
     } else {
       sendMessage({
         chat_id: chatId,
-        text: "❓ Perintah tidak dikenal. Ketik transaksimu langsung, contoh: \"Bayar makan di warteg 15rb\"\nAtau gunakan /start"
+        text: "Perintah tidak dikenal. Ketik transaksimu langsung atau gunakan /start"
       });
     }
   } else {
     sendMessage({
       chat_id: chatId,
-      text: "🚫 Anda tidak memiliki akses untuk menggunakan bot ini."
+      text: "Anda tidak memiliki akses untuk menggunakan bot ini."
     });
   }
 }
 
 // =============================================
 // NATURAL LANGUAGE PARSER (AI)
-// Chat bebas → AI parsing → catat otomatis ke sheet
 // =============================================
 
 function handleNaturalLanguage(chatId, text) {
-  if (!GEMINI_API_KEY) {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "change_your_key") {
     sendMessage({
       chat_id: chatId,
-      text: "⚠️ Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
     });
     return;
   }
 
-  var sent = sendMessage({ chat_id: chatId, text: "⏳ Memproses transaksi..." });
+  var sent = sendMessage({ chat_id: chatId, text: "Memproses transaksi..." });
   var msgId = sent && sent.result && sent.result.message_id;
 
   try {
     var result = parseTransactionWithAI(text);
     if (!result.ok) {
-      editOrSend(chatId, msgId, "❌ AI gagal merespon.\n\n🔍 Sebab: " + result.error + "\n\nCoba lagi atau gunakan /tambahdata.");
+      editOrSend(chatId, msgId, "AI gagal merespon.\n\nSebab: " + result.error + "\n\nCoba lagi atau gunakan /tambahdata.");
       return;
     }
     var parsed = result.data;
     if (!parsed.isTransaction) {
-      editOrSend(chatId, msgId, parsed.response || "❓ Bukan transaksi. Contoh: \"Makan siang 25rb\"");
+      editOrSend(chatId, msgId, parsed.response || "Bukan transaksi. Contoh: makan siang 25rb");
       return;
     }
 
     var nilai = parseFloat(parsed.nilai);
     if (!parsed.transaksi || isNaN(nilai)) {
-      editOrSend(chatId, msgId, "❌ Gagal memahami transaksi. Coba: \"Bayar makan di warteg 15rb\"");
+      editOrSend(chatId, msgId, "Gagal memahami transaksi. Coba: bayar makan di warteg 15rb");
       return;
     }
 
-    // Hitung tanggal dari ISO date (default hari ini)
     var dateIso = parsed.date || Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
     var d = new Date(dateIso + "T00:00:00");
     var data = {
@@ -204,15 +197,15 @@ function handleNaturalLanguage(chatId, text) {
 
     var monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
     var tgl = data.Tanggal + " " + monthNames[parseInt(data.Bulan) - 1] + " " + data.Tahun;
-    editOrSend(chatId, msgId, "✅ Tercatat!\n\n" +
-          "📌 " + data.Transaksi + "\n" +
-          "📝 " + data.Uraian + "\n" +
-          "🏷 " + data.Kategori + " • " + data.Bank + "\n" +
-          "💰 Rp " + nilai.toLocaleString("id-ID") + "\n" +
-          "📅 " + tgl);
+    editOrSend(chatId, msgId, "Tercatat!\n\n" +
+          data.Transaksi + "\n" +
+          data.Uraian + "\n" +
+          data.Kategori + " - " + data.Bank + "\n" +
+          "Rp " + nilai.toLocaleString("id-ID") + "\n" +
+          tgl);
   } catch (error) {
     console.error("NL parser error:", error);
-    editOrSend(chatId, msgId, "❌ Terjadi error saat mencatat. Coba lagi atau gunakan /tambahdata.");
+    editOrSend(chatId, msgId, "Terjadi error saat mencatat. Coba lagi atau gunakan /tambahdata.");
   }
 }
 
@@ -266,81 +259,6 @@ function callGemini(prompt) {
   return { ok: false, error: lastError ? lastError.message : "unknown error" };
 }
 
-// =============================================
-// TEST FUNCTION — jalankan di editor untuk cek koneksi API
-// =============================================
-function testGeminiConnection() {
-  if (!GEMINI_API_KEY) {
-    Logger.log("❌ GEMINI_API_KEY masih kosong! Isi dulu di baris atas script.");
-    return;
-  }
-  Logger.log("API Key: " + GEMINI_API_KEY.slice(0, 6) + "..." + GEMINI_API_KEY.slice(-4));
-  Logger.log("Mencoba " + AI_MODELS.length + " model...\n");
-  for (var i = 0; i < AI_MODELS.length; i++) {
-    var model = AI_MODELS[i];
-    var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + GEMINI_API_KEY;
-    var payload = {
-      contents: [{ parts: [{ text: "Balas hanya kata: OK" }] }],
-      generationConfig: { temperature: 0, maxOutputTokens: 10 }
-    };
-    try {
-      var response = UrlFetchApp.fetch(url, {
-        method: "post",
-        contentType: "application/json",
-        payload: JSON.stringify(payload),
-        muteHttpExceptions: true
-      });
-      var code = response.getResponseCode();
-      var body = response.getContentText();
-      if (code === 200) {
-        var data = JSON.parse(body);
-        var out = data.candidates && data.candidates[0] && data.candidates[0].content
-          && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text;
-        Logger.log("✅ " + model + " → HTTP 200 → \"" + (out || "").trim() + "\"");
-      } else {
-        Logger.log("❌ " + model + " → HTTP " + code);
-        Logger.log("   " + body.slice(0, 300));
-      }
-    } catch (e) {
-      Logger.log("❌ " + model + " → Exception: " + e.message);
-    }
-  }
-  Logger.log("\nSelesai. Lihat menu View > Logs (atau Execution log).");
-}
-
-// =============================================
-// LIST MODELS — cek model apa saja yang tersedia untuk API key kamu
-// =============================================
-function listGeminiModels() {
-  if (!GEMINI_API_KEY) {
-    Logger.log("❌ GEMINI_API_KEY masih kosong!");
-    return;
-  }
-  var url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + GEMINI_API_KEY;
-  try {
-    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-    var code = response.getResponseCode();
-    var body = response.getContentText();
-    if (code !== 200) {
-      Logger.log("❌ HTTP " + code + "\n" + body.slice(0, 500));
-      return;
-    }
-    var data = JSON.parse(body);
-    var models = data.models || [];
-    Logger.log("✅ Ditemukan " + models.length + " model:\n");
-    for (var i = 0; i < models.length; i++) {
-      var name = models[i].name.replace("models/", "");
-      var methods = (models[i].supportedGenerationMethods || []).join(",");
-      if (methods.indexOf("generateContent") !== -1) {
-        Logger.log("✅ " + name + "  (generateContent)");
-      }
-    }
-    Logger.log("\nSalin salah satu nama di atas (yang ada ✅) lalu taruh paling depan di var AI_MODELS.");
-  } catch (e) {
-    Logger.log("❌ Exception: " + e.message);
-  }
-}
-
 function buildParsePrompt(message) {
   var now = new Date();
   var isoToday = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
@@ -372,7 +290,7 @@ function buildParsePrompt(message) {
 "PHRASING & ABBREVIATIONS (Indonesian):\n" +
 "- Amount: rb/ribu=×1000, jt/juta=×1000000, k=×1000 (contoh \"25rb\"=25000, \"1.5jt\"=1500000)\n" +
 "- kolom \"transaksi\" = METODE PEMBAYARAN, hanya 2 nilai: \"Transfer\" (bayar via transfer bank/e-wallet) atau \"Cash\" (bayar tunai/uang fisik). Default \"Transfer\" jika tidak disebut, karena user paling sering pakai transfer.\n" +
-"- \"tf\"/\"transfer\" = metode Transfer. Contoh \"tf 100k ke BCA\" → transaksi:\"Transfer\", bank:\"BCA\"\n" +
+"- \"tf\"/\"transfer\" = metode Transfer. Contoh \"tf 100k ke BCA\" -> transaksi:\"Transfer\", bank:\"BCA\"\n" +
 "- \"bayar\" + lain (makan, listrik) = beli sesuatu. Default Transfer + JAGO, kecuali disebut \"tunai\"/\"cash\" maka Cash + CASH.\n" +
 "- Kata pengeluaran: beli, makan, jajan, bensin, ongkir, parkir, tagihan, bayar\n" +
 "- Kata pemasukan: terima, dapat, gaji, bayaran, pemasukan, masuk, cair\n\n" +
@@ -406,7 +324,6 @@ function sendMessage(postdata) {
   try { return JSON.parse(response.getContentText()); } catch (e) { return null; }
 }
 
-// Edit pesan yang sudah dikirim, fallback kirim baru jika gagal
 function editOrSend(chatId, msgId, text) {
   if (msgId) {
     try {
@@ -429,7 +346,7 @@ function editOrSend(chatId, msgId, text) {
 function addDataToSheet(data) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Expenses");
   const monthNames = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
   ];
   const monthIndex = parseInt(data.Bulan) - 1;
@@ -438,19 +355,17 @@ function addDataToSheet(data) {
   const numericValue = parseFloat(data.Nilai);
 
   // Cari baris kosong pertama: anggap kosong jika kolom Transaksi (D) kosong
-  const range = sheet.getRange("A2:H999"); // Rentang dari kolom A hingga H
+  const range = sheet.getRange("A2:H999");
   const values = range.getValues();
 
   let emptyRow = null;
   for (let i = 0; i < values.length; i++) {
-    // Cukup cek kolom Transaksi (D = index 3) — abaikan tanggal/bulan template di B/C
     if (values[i][3] === "" || values[i][3] === null) {
-      emptyRow = i + 2; // Baris kosong ditemukan
+      emptyRow = i + 2;
       break;
     }
   }
 
-  // Jika ada baris kosong, tambahkan data di baris tersebut
   if (emptyRow) {
     sheet.getRange(emptyRow, 1, 1, 8).setValues([[
       false,
@@ -468,9 +383,78 @@ function addDataToSheet(data) {
 }
 
 // =============================================
-// TEST ADD TO SHEET — jalankan di editor untuk cek apakah data benar-benar tersimpan
-// Pilih function "testAddToSheet" di dropdown, lalu klik Run
+// TEST FUNCTIONS - jalankan di editor Apps Script
 // =============================================
+
+function testGeminiConnection() {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "change_your_key") {
+    Logger.log("ERROR: GEMINI_API_KEY masih kosong! Isi dulu di baris atas script.");
+    return;
+  }
+  Logger.log("API Key: " + GEMINI_API_KEY.slice(0, 6) + "..." + GEMINI_API_KEY.slice(-4));
+  Logger.log("Mencoba " + AI_MODELS.length + " model...\n");
+  for (var i = 0; i < AI_MODELS.length; i++) {
+    var model = AI_MODELS[i];
+    var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + GEMINI_API_KEY;
+    var payload = {
+      contents: [{ parts: [{ text: "Balas hanya kata: OK" }] }],
+      generationConfig: { temperature: 0, maxOutputTokens: 10 }
+    };
+    try {
+      var response = UrlFetchApp.fetch(url, {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      });
+      var code = response.getResponseCode();
+      var body = response.getContentText();
+      if (code === 200) {
+        var data = JSON.parse(body);
+        var out = data.candidates && data.candidates[0] && data.candidates[0].content
+          && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text;
+        Logger.log("[OK] " + model + " -> HTTP 200 -> \"" + (out || "").trim() + "\"");
+      } else {
+        Logger.log("[FAIL] " + model + " -> HTTP " + code);
+        Logger.log("   " + body.slice(0, 300));
+      }
+    } catch (e) {
+      Logger.log("[FAIL] " + model + " -> Exception: " + e.message);
+    }
+  }
+  Logger.log("\nSelesai. Lihat menu View > Logs (atau Execution log).");
+}
+
+function listGeminiModels() {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "change_your_key") {
+    Logger.log("ERROR: GEMINI_API_KEY masih kosong!");
+    return;
+  }
+  var url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + GEMINI_API_KEY;
+  try {
+    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var code = response.getResponseCode();
+    var body = response.getContentText();
+    if (code !== 200) {
+      Logger.log("ERROR: HTTP " + code + "\n" + body.slice(0, 500));
+      return;
+    }
+    var data = JSON.parse(body);
+    var models = data.models || [];
+    Logger.log("Ditemukan " + models.length + " model:\n");
+    for (var i = 0; i < models.length; i++) {
+      var name = models[i].name.replace("models/", "");
+      var methods = (models[i].supportedGenerationMethods || []).join(",");
+      if (methods.indexOf("generateContent") !== -1) {
+        Logger.log("[OK] " + name + "  (generateContent)");
+      }
+    }
+    Logger.log("\nSalin salah satu nama di atas (yang ada [OK]) lalu taruh paling depan di var AI_MODELS.");
+  } catch (e) {
+    Logger.log("ERROR: Exception: " + e.message);
+  }
+}
+
 function testAddToSheet() {
   var testData = {
     Tanggal: "17",
