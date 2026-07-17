@@ -143,7 +143,7 @@ function handleCommands(update) {
             addDataToSheet(data);
             sendMessage({
               chat_id: chatId,
-              text: "Tercatat: " + dataString
+              text: "Tercatat!\nJenis: " + data.Jenis + "\n" + dataString
             });
           } catch (error) {
             console.error("Error adding data to sheet:", error);
@@ -546,6 +546,8 @@ function addDataToSheet(data) {
   const formattedDate = `${data.Tanggal} ${monthNames[monthIndex]} ${tahun}`;
   const numericValue = parseFloat(data.Nilai);
 
+  prepareJenisColumn(sheet);
+
   // Cari baris kosong pertama: anggap kosong jika kolom Transaksi (D) kosong
   const range = sheet.getRange("A2:I999");
   const values = range.getValues();
@@ -573,6 +575,28 @@ function addDataToSheet(data) {
   } else {
     throw new Error("Tidak ada baris kosong yang tersedia antara baris 2 hingga 999.");
   }
+}
+
+function prepareJenisColumn(sheet) {
+  var requiredColumn = 9;
+  var maxColumns = sheet.getMaxColumns();
+  if (maxColumns < requiredColumn) {
+    sheet.insertColumnsAfter(maxColumns, requiredColumn - maxColumns);
+  }
+
+  var headerRange = sheet.getRange(1, requiredColumn);
+  var header = headerRange.getValue();
+  if (header === "Jenis") return;
+  if (header !== "") {
+    throw new Error("Kolom I harus memiliki header 'Jenis'; ditemukan '" + header + "'.");
+  }
+
+  headerRange.setValue("Jenis");
+  var validation = SpreadsheetApp.newDataValidation()
+    .requireValueInList(JENIS_TRANSAKSI, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange("I2:I999").setDataValidation(validation);
 }
 
 // =============================================
