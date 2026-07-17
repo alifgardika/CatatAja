@@ -32,6 +32,8 @@ Baris tersebut masuk ke tab "Expenses" di Google Sheets kamu.
 
 ![Penggunaan bot di Telegram](img/3.jpg)
 
+![Pencatatan gambar ke Google Sheets](img/4.jpg)
+
 ---
 
 ## Tampilan
