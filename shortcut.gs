@@ -1,6 +1,5 @@
 // Apple Shortcut image endpoint. Keep this file alongside Kode.gs in the same
 // Apps Script project so it can reuse the existing Gemini and sheet functions.
-var SHORTCUT_TOKEN = "change_this_to_a_long_random_secret";
 var SHORTCUT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 function handleShortcutPost(e) {
@@ -13,8 +12,8 @@ function handleShortcutPost(e) {
     return shortcutJsonResponse({ ok: false, error: "JSON tidak valid." });
   }
 
-  // Telegram updates do not contain image_base64, so Kode.gs handles them.
-  if (!request || !request.image_base64) return null;
+  // Telegram updates do not contain photo, so Kode.gs handles them.
+  if (!request || !request.photo) return null;
 
   var image = validateShortcutImageRequest(request);
   if (!image.ok) return shortcutJsonResponse({ ok: false, error: image.error });
@@ -28,20 +27,12 @@ function validateShortcutImageRequest(request) {
   if (!chatId || !USERS.includes(chatId)) {
     return { ok: false, error: "Chat ID tidak memiliki akses." };
   }
-  if (!SHORTCUT_TOKEN || SHORTCUT_TOKEN === "change_this_to_a_long_random_secret"
-      || request.shortcut_token !== SHORTCUT_TOKEN) {
-    return { ok: false, error: "Shortcut token tidak valid." };
-  }
-
-  var rawImage = String(request.image_base64 || "").replace(/\s/g, "");
+  var rawImage = String(request.photo || "").replace(/\s/g, "");
   var dataUrl = rawImage.match(/^data:(image\/(?:jpeg|png));base64,(.+)$/i);
-  var mimeType = String(request.mime_type || "").toLowerCase();
+  var mimeType = "image/jpeg";
   if (dataUrl) {
     mimeType = dataUrl[1].toLowerCase();
     rawImage = dataUrl[2];
-  }
-  if (mimeType !== "image/jpeg" && mimeType !== "image/png") {
-    return { ok: false, error: "Gambar harus bertipe JPEG atau PNG." };
   }
   if (!rawImage || rawImage.length > Math.ceil(SHORTCUT_MAX_IMAGE_BYTES * 4 / 3)
       || !/^[A-Za-z0-9+/]*={0,2}$/.test(rawImage) || rawImage.length % 4 !== 0) {

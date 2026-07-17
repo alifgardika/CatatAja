@@ -15,19 +15,16 @@ The web app accepts `application/json` POST bodies with these fields:
 ```json
 {
   "chat_id": 123456789,
-  "image_base64": "<base64-encoded JPEG or PNG>",
-  "mime_type": "image/jpeg",
-  "caption": "optional context",
-  "shortcut_token": "configured secret"
+  "photo": "<base64-encoded JPEG or PNG>"
 }
 ```
 
-`chat_id` must be in `USERS`. `shortcut_token` must match a new `SHORTCUT_TOKEN` configuration value, preventing anyone who discovers the public web-app URL from adding records. The endpoint accepts JPEG and PNG data URLs as well as bare base64 input, with a size limit before Gemini is called.
+`chat_id` must be in `USERS`. The endpoint accepts JPEG data URLs or bare base64 input, with a size limit before Gemini is called. The public web-app URL must be kept private because the simplified Shortcut contract has no separate shared secret.
 
 ## Processing flow
 
 1. `doPost` identifies a Shortcut request by its `image_base64` field; Telegram webhook JSON remains unchanged.
-2. The request validator checks the shared token, allowed chat ID, image MIME type, and base64 payload.
+2. The request validator checks the allowed chat ID and base64 payload.
 3. The endpoint sends a Telegram progress message, calls the existing `parseImageWithAI` function, and reuses `recordTransaction` to write the normalized result and send the existing confirmation.
 4. It returns a JSON response stating whether the request was accepted or why it was rejected. Errors are sent to Telegram when an authorized request reaches the parser.
 

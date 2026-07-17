@@ -9,18 +9,14 @@ function loadScript() {
   vm.runInContext(fs.readFileSync("Kode.gs", "utf8"), context);
   vm.runInContext(fs.readFileSync("shortcut.gs", "utf8"), context);
   context.USERS = [123456789];
-  context.SHORTCUT_TOKEN = "shortcut-secret";
   return context;
 }
 
-test("accepts an authorized JPEG Shortcut request", () => {
+test("accepts a Shortcut request containing only chat_id and photo", () => {
   const script = loadScript();
   const result = script.validateShortcutImageRequest({
     chat_id: 123456789,
-    shortcut_token: "shortcut-secret",
-    image_base64: "data:image/jpeg;base64,aGVsbG8=",
-    mime_type: "image/jpeg",
-    caption: "kopi"
+    photo: "aGVsbG8="
   });
 
   assert.deepEqual(JSON.parse(JSON.stringify(result)), {
@@ -28,32 +24,29 @@ test("accepts an authorized JPEG Shortcut request", () => {
     chatId: 123456789,
     imageBase64: "aGVsbG8=",
     mimeType: "image/jpeg",
-    caption: "kopi"
+    caption: ""
   });
 });
 
-test("rejects a Shortcut request with an invalid token", () => {
+test("rejects a Shortcut request from an unauthorized chat ID", () => {
   const script = loadScript();
+  script.USERS = [987654321];
   const result = script.validateShortcutImageRequest({
     chat_id: 123456789,
-    shortcut_token: "wrong-token",
-    image_base64: "aGVsbG8=",
-    mime_type: "image/jpeg"
+    photo: "aGVsbG8="
   });
 
   assert.equal(result.ok, false);
-  assert.match(result.error, /token/i);
+  assert.match(result.error, /akses/i);
 });
 
-test("rejects an unsupported image type before calling Gemini", () => {
+test("rejects an invalid photo payload before calling Gemini", () => {
   const script = loadScript();
   const result = script.validateShortcutImageRequest({
     chat_id: 123456789,
-    shortcut_token: "shortcut-secret",
-    image_base64: "aGVsbG8=",
-    mime_type: "application/pdf"
+    photo: "not valid base64"
   });
 
   assert.equal(result.ok, false);
-  assert.match(result.error, /JPEG atau PNG/);
+  assert.match(result.error, /Data gambar/);
 });
