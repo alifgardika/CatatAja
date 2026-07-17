@@ -95,7 +95,7 @@ Buka [spreadsheet template](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2G
 
 Di spreadsheet yang sudah disalin, klik **Extensions > Apps Script**.
 
-Saat transaksi pertama ditulis, script otomatis menyiapkan header `Jenis` di kolom I dan data validation dropdown untuk `Income`, `Expense`, dan `Transfer` pada I2:I999. Jika I1 sudah berisi header lain, script berhenti dengan error agar data yang ada tidak tertimpa; ubah atau pindahkan kolom tersebut terlebih dahulu.
+Saat transaksi pertama ditulis, script otomatis menyiapkan header `Jenis` di kolom I dan data validation dropdown untuk `Income`, `Expense`, dan `Transfer` pada I2:I999. Jika I1 sudah berisi header lain, atau I2:I999 sudah berisi data/formula saat I1 kosong, script berhenti dengan error agar data yang ada tidak tertimpa; ubah atau pindahkan kolom tersebut terlebih dahulu.
 
 ### 6. Masukkan kode
 

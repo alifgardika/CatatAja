@@ -97,7 +97,7 @@ Open the [template sheet](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2GDH
 
 In your copied spreadsheet, click **Extensions > Apps Script**.
 
-On the first transaction write, the script automatically creates the column-I `Jenis` header and dropdown data validation for `Income`, `Expense`, and `Transfer` in I2:I999. If I1 already contains another header, the script stops with an error instead of overwriting existing data; move or rename that column first.
+On the first transaction write, the script automatically creates the column-I `Jenis` header and dropdown data validation for `Income`, `Expense`, and `Transfer` in I2:I999. If I1 already contains another header, or I2:I999 already contains data/formulas while I1 is blank, the script stops with an error instead of overwriting existing data; move or rename that column first.
 
 ### 6. Add the code
 
