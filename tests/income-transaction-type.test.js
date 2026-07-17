@@ -203,13 +203,14 @@ test("initializes a blank Jenis header and validation before writing", () => {
   assert.equal(sheet.validation.allowInvalid, false);
 });
 
-test("does not rewrite a preexisting Jenis header", () => {
+test("applies validation without rewriting a preexisting Jenis header", () => {
   const { context, sheet } = loadScript({ header: "Jenis" });
 
   context.addDataToSheet({ Tanggal: "17", Bulan: "7", Jenis: "Income", Transaksi: "Transfer", Nilai: "5000000" });
 
   assert.equal(sheet.headerWrites, 0);
-  assert.equal(sheet.validation, null);
+  assert.deepEqual(JSON.parse(JSON.stringify(sheet.validation.values)), ["Income", "Expense", "Transfer"]);
+  assert.equal(sheet.validation.allowInvalid, false);
 });
 
 test("rejects a conflicting column I header without overwriting it", () => {

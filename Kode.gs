@@ -586,12 +586,12 @@ function prepareJenisColumn(sheet) {
 
   var headerRange = sheet.getRange(1, requiredColumn);
   var header = headerRange.getValue();
-  if (header === "Jenis") return;
-  if (header !== "") {
+  if (header === "") {
+    headerRange.setValue("Jenis");
+  } else if (header !== "Jenis") {
     throw new Error("Kolom I harus memiliki header 'Jenis'; ditemukan '" + header + "'.");
   }
 
-  headerRange.setValue("Jenis");
   var validation = SpreadsheetApp.newDataValidation()
     .requireValueInList(JENIS_TRANSAKSI, true)
     .setAllowInvalid(false)
