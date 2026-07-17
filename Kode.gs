@@ -24,6 +24,11 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  if (!e || !e.postData) return;
+
+  var shortcutResponse = handleShortcutPost(e);
+  if (shortcutResponse) return shortcutResponse;
+
   if (e.postData.type == "application/json") {
     let update = JSON.parse(e.postData.contents);
 
