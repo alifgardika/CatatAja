@@ -50,3 +50,9 @@ test("rejects an invalid photo payload before calling Gemini", () => {
   assert.equal(result.ok, false);
   assert.match(result.error, /Data gambar/);
 });
+
+test("does not throw when Apps Script runs doPost without an HTTP event", () => {
+  const script = loadScript();
+
+  assert.doesNotThrow(() => script.doPost({}));
+});

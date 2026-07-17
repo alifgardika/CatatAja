@@ -24,6 +24,8 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  if (!e || !e.postData) return;
+
   var shortcutResponse = handleShortcutPost(e);
   if (shortcutResponse) return shortcutResponse;
 
