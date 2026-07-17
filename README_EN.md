@@ -97,7 +97,7 @@ Open the [template sheet](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2GDH
 
 In your copied spreadsheet, click **Extensions > Apps Script**.
 
-Ensure the `Expenses` tab has a column-I header named `Jenis`, then add dropdown data validation to that column with `Income`, `Expense`, and `Transfer`. Older template copies need this manual update before the bot can write new transactions.
+On the first transaction write, the script automatically creates the column-I `Jenis` header and dropdown data validation for `Income`, `Expense`, and `Transfer` in I2:I999. If I1 already contains another header, the script stops with an error instead of overwriting existing data; move or rename that column first.
 
 ### 6. Add the code
 
@@ -149,7 +149,7 @@ var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 ```
 
-These must match the data validation (dropdowns) in your Google Sheet columns D, F, and G. Also add column-I data validation for `Income`, `Expense`, and `Transfer`. If values do not match, the sheet rejects the write.
+These must match the data validation (dropdowns) in your Google Sheet columns D, F, and G. The script automatically adds `Income`, `Expense`, and `Transfer` validation to column I on its first write. If I1 is already used by a header other than `Jenis`, the script refuses to overwrite that column.
 
 ---
 

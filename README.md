@@ -95,7 +95,7 @@ Buka [spreadsheet template](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2G
 
 Di spreadsheet yang sudah disalin, klik **Extensions > Apps Script**.
 
-Pastikan tab `Expenses` memiliki header kolom I bernama `Jenis`, lalu tambahkan data validation dropdown untuk `Income`, `Expense`, dan `Transfer` pada kolom tersebut. Template lama perlu diperbarui secara manual sebelum bot dapat menulis transaksi baru.
+Saat transaksi pertama ditulis, script otomatis menyiapkan header `Jenis` di kolom I dan data validation dropdown untuk `Income`, `Expense`, dan `Transfer` pada I2:I999. Jika I1 sudah berisi header lain, script berhenti dengan error agar data yang ada tidak tertimpa; ubah atau pindahkan kolom tersebut terlebih dahulu.
 
 ### 6. Masukkan kode
 
@@ -147,7 +147,7 @@ var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 ```
 
-**Penting:** Nilai-nilai ini harus cocok dengan data validation (dropdown) di Google Sheets pada kolom D, F, dan G. Tambahkan juga data validation pada kolom I untuk `Income`, `Expense`, dan `Transfer`. Jika tidak cocok, sheet akan menolak penulisan data.
+**Penting:** Nilai-nilai ini harus cocok dengan data validation (dropdown) di Google Sheets pada kolom D, F, dan G. Script otomatis menambahkan validation `Income`, `Expense`, dan `Transfer` di kolom I saat pertama kali menulis. Jika I1 sudah dipakai oleh header selain `Jenis`, script akan menolak menimpa kolom tersebut.
 
 ---
 
