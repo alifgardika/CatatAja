@@ -10,7 +10,7 @@ Runs entirely on Google Apps Script — no server, no hosting cost, no dependenc
 
 ## How it works
 
-You send a normal message:
+You send a normal message, or a photo of a receipt/proof of payment:
 
 ```
 beli kopi 25k
@@ -19,18 +19,28 @@ beli kopi 25k
 The bot replies (edits the same message, no spam):
 
 ```
-Tercatat!
+✅ Tercatat!
 
-Transfer
-beli kopi
-Makanan - JAGO
-Rp 25.000
-17 Juli 2026
+📌 Transfer
+📝 beli kopi
+🏷 Makanan • JAGO
+💰 Rp 25.000
+📅 17 Juli 2026
 ```
 
 The row lands in your Google Sheet's "Expenses" tab.
 
+![Bot usage in Telegram](img/3.jpg)
+
 ---
+
+## Screenshots
+
+Dashboard and sheets in Google Sheets:
+
+![Sheets dashboard](img/1.jpg)
+
+![Income sheet](img/2.jpg)
 
 ## Examples
 
@@ -41,6 +51,23 @@ The row lands in your Google Sheet's "Expenses" tab.
 | `makan siang 15k tunai` | Cash | CASH | Makanan | 15.000 |
 | `jual server 150k` | Transfer | JAGO | server | 150.000 |
 | `beli groceries 120rb BCA kemarin` | Transfer | BCA | Belanja | 120.000 |
+
+## Send an image / receipt
+
+Besides typing, you can **send a photo** of a receipt, invoice, transfer proof, or an e-wallet/QRIS payment screenshot. The bot reads the image with Gemini Vision and logs it automatically, just like a text message.
+
+| You send | Result |
+|----------|--------|
+| Photo of a coffee receipt Rp25.000 | Transfer • Makanan • JAGO • 25.000 |
+| BCA transfer screenshot Rp120.000 | Transfer • Belanja • BCA • 120.000 |
+| Photo + caption `tunai` | Cash • CASH • (category from image) |
+
+Tips:
+- Add an optional **caption** to clarify, e.g. receipt photo + caption `makan siang`.
+- Images sent as a photo or as a file/document are both supported (as long as the type is an image).
+- If the image can't be read, the bot will ask you to type it manually.
+
+Note: Telegram limits bot file downloads to 20 MB. Receipts/screenshots are usually well under that.
 
 Default method is Transfer, default bank is JAGO. Say "tunai" or "cash" to switch to Cash. Name a bank to override JAGO.
 
