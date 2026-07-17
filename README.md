@@ -196,15 +196,32 @@ Jika AI tidak tersedia, Anda tetap dapat menambah data dengan format semicolon:
 
 ## Apple Shortcut: Foto langsung ke sheet
 
-Untuk kemudahan, Anda dapat menggunakan Apple Shortcut agar foto dapat dikirim langsung ke Google Sheets tanpa perlu mengetik teks di Telegram.
+Untuk kemudahan maksimal, gunakan Apple Shortcut agar foto dapat dikirim langsung ke Google Sheets tanpa perlu mengetik pesan di Telegram.
 
 **Mengapa tidak gunakan endpoint Telegram `sendPhoto`?**  
 Foto yang dikirim melalui bot tidak masuk kembali ke webhook, sehingga tidak akan tercatat otomatis ke sheet. Oleh karena itu, gunakan endpoint Apps Script untuk memastikan foto diproses melalui alur Gemini Vision yang sama.
 
-### Langkah-langkah setup
+### Cara cepat: Gunakan template shortcut
 
-**Persiapan:**
-Tambahkan file `shortcut.gs` ke project Apps Script yang sama dengan `Kode.gs`.
+Kami menyediakan template Shortcut siap pakai. Berikut cara menggunakannya:
+
+1. **Buka template** dari link berikut di perangkat Apple Anda: [Shortcut template](https://www.icloud.com/shortcuts/272bc5b9012b42288f2b57b848ddc5ba)
+
+2. **Tap "Add Shortcut"** untuk menambahkan ke library Anda
+
+3. **Edit Shortcut** dan ganti dua parameter:
+   - **Chat ID:** Cari field `chat_id` dan ganti nilai `123456789` dengan Chat ID Anda
+   - **Web App URL:** Cari field `url` dan ganti nilai `https://YOUR_API_ENDPOINT` dengan Web App URL Anda (dari step 7 di Setup)
+
+4. Selesai! Shortcut siap digunakan.
+
+Untuk menjalankan Shortcut:
+- Di iPhone/iPad: Buka Shortcuts app → tap Shortcut → ambil foto → hasil akan langsung dikirim ke sheet
+- Atau: Control Center → tap Shortcut icon (jika sudah ditambahkan)
+
+### Buat manual dari awal (opsional)
+
+Jika ingin membuat Shortcut dari nol, tambahkan file `shortcut.gs` ke project Apps Script Anda, lalu ikuti langkah di bawah:
 
 **STEP 1: Ambil Foto**
 - Buka Shortcuts app → tekan `+` → cari **Take Photo** → Add
@@ -214,12 +231,12 @@ Tambahkan file `shortcut.gs` ke project Apps Script yang sama dengan `Kode.gs`.
 
 **STEP 3: Buat Dictionary**
 - Cari **Dictionary** → Add
-- Field 1: `chat_id` = `123456789` (ganti dengan Chat ID Anda)
+- Field 1: `chat_id` = `CHAT_ID_ANDA`
 - Field 2: `photo` = hasil **Base64 Encode**
 
 **STEP 4: Kirim ke API**
 - Cari **Get Contents of URL** → Add
-- URL: `https://YOUR_API_ENDPOINT` (ganti dengan Web App URL Anda)
+- URL: `WEB_APP_URL_ANDA`
 - Method: `POST`
 - Headers: `Content-Type: application/json`
 - Body: Dictionary dari step 3
@@ -227,19 +244,13 @@ Tambahkan file `shortcut.gs` ke project Apps Script yang sama dengan `Kode.gs`.
 **STEP 5: Tampilkan Hasil**
 - Cari **Show Result** → Add
 
-Selesai! Bot akan mengirim konfirmasi ke Telegram setelah transaksi berhasil masuk ke sheet.
-
-**Keamanan:** Jangan masukkan bot token di dalam Shortcut. Token tetap disimpan secara aman hanya di `Kode.gs`.
-
-### Pengaturan default
-- Metode default: **Transfer**
-- Bank default: **JAGO**
-- Untuk menggunakan Cash: sebut "tunai" atau "cash" di caption
-- Untuk ganti bank: sebut nama bank lain (contoh: "BCA", "MANDIRI")
-
-### Tips penggunaan
-- Bot memahami singkatan nominal: `rb`, `ribu`, `k` = ribu; `jt`, `juta` = juta
-- Bot juga memahami tanggal relatif: `kemarin`, `2 hari lalu`, `tgl 13`, `minggu lalu`
+### Pengaturan & tips
+- **Keamanan:** Jangan masukkan bot token di Shortcut. Token tetap aman hanya di `Kode.gs`
+- **Metode default:** Transfer
+- **Bank default:** JAGO
+- **Untuk Cash:** Tambahkan caption "tunai" atau "cash"
+- **Ganti bank:** Sebut nama bank di caption (contoh: "BCA", "MANDIRI")
+- **Bot memahami:** Singkatan nominal (`rb`, `ribu`, `k`), tanggal relatif (`kemarin`, `2 hari lalu`)
 
 ---
 
