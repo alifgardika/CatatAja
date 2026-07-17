@@ -64,50 +64,12 @@ Selain mengetik, kamu bisa **mengirim foto** struk, invoice, bukti transfer, ata
 | Screenshot transfer BCA Rp120.000 | Transfer • Belanja • BCA • 120.000 |
 | Foto + caption `tunai` | Cash • CASH • (kategori sesuai gambar) |
 
-Tips:
-- Tambah **caption** opsional untuk memperjelas, mis. foto struk + caption `makan siang`.
-- Gambar dikirim sebagai foto maupun sebagai file/document sama-sama didukung (asalkan tipe image).
-- Jika gambar tak terbaca, bot akan minta kamu ketik manual.
+**Tips:**
+- Tambahkan **caption** opsional untuk memperjelas, misalnya foto struk dengan caption `makan siang`.
+- Gambar dapat dikirim sebagai foto maupun file dokumen (selama bertipe image).
+- Jika gambar tidak terbaca, bot akan meminta Anda mengetik data secara manual.
 
-Catatan: Telegram membatasi unduhan file bot hingga 20 MB. Struk/screenshot biasanya jauh di bawah itu.
-
-## Apple Shortcut: foto langsung ke sheet
-
-Jangan gunakan endpoint Telegram `sendPhoto`: foto yang dikirim bot tidak masuk kembali ke webhook bot, jadi tidak akan tercatat ke sheet. Gunakan endpoint Apps Script ini agar foto diproses langsung oleh alur Gemini Vision yang sama.
-
-Tambahkan `shortcut.gs` ke project Apps Script yang sama dengan `Kode.gs`, lalu buat Shortcut ini:
-
-### STEP 1: Take Photo
-
-- Shortcuts app -> `+` -> cari **Take Photo** -> Add
-
-### STEP 2: Base64 Encode
-
-- Cari **Base64 Encode** -> Add
-
-### STEP 3: Create Dictionary
-
-- Cari **Dictionary** -> Add
-- Field 1: `chat_id` = `123456789`
-- Field 2: `photo` = hasil **Base64 Encode**
-
-### STEP 4: Send to API
-
-- Cari **Get Contents of URL** -> Add
-- URL: `https://YOUR_API_ENDPOINT`
-- Method: `POST`
-- Headers: `Content-Type: application/json`
-- Body: Dictionary dari step 3
-
-### STEP 5: Show Result
-
-- Cari **Show Result** -> Add
-
-Done! Bot akan mengirim konfirmasi ke Telegram setelah transaksi masuk ke sheet. Jangan pakai bot token di Shortcut; token tetap hanya di `Kode.gs`.
-
-Metode default adalah Transfer, bank default JAGO. Sebut "tunai" atau "cash" untuk Cash. Sebut nama bank untuk ganti dari JAGO.
-
-Bot mengerti singkatan nominal: `rb`/`ribu`/`k` = ribu, `jt`/`juta` = juta. Juga mengerti tanggal relatif: `kemarin`, `2 hari lalu`, `tgl 13`, `minggu lalu`.
+**Catatan:** Telegram membatasi unduhan file bot hingga 20 MB. Struk atau screenshot biasanya jauh di bawah batasan tersebut.
 
 ---
 
@@ -119,15 +81,15 @@ Buka [@BotFather](https://t.me/botfather), kirim `/newbot`, ikuti instruksi. Sim
 
 ### 2. Dapatkan Chat ID
 
-Buka [@userinfobot](https://t.me/userinfobot), kirim pesan apa saja. Bot balas dengan Chat ID angka kamu.
+Buka [@userinfobot](https://t.me/userinfobot), kirim pesan apa saja. Bot akan membalas dengan Chat ID berupa angka.
 
-### 3. Dapatkan Gemini API key
+### 3. Dapatkan Gemini API Key
 
-Buka https://aistudio.google.com/apikey dan buat key gratis.
+Kunjungi https://aistudio.google.com/apikey dan buat API key gratis.
 
 ### 4. Salin spreadsheet template
 
-Buka [spreadsheet template](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2GDH4JXVhxa0sQqH1vF3m_QxufEPNQrNc/edit?usp=sharing), lalu **File > Make a copy** ke Google Drive kamu sendiri.
+Buka [spreadsheet template](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2GDH4JXVhxa0sQqH1vF3m_QxufEPNQrNc/edit?usp=sharing), lalu pilih **File > Make a copy** untuk menyalinnya ke Google Drive Anda.
 
 ### 5. Buka Apps Script
 
@@ -135,8 +97,8 @@ Di spreadsheet yang sudah disalin, klik **Extensions > Apps Script**.
 
 ### 6. Masukkan kode
 
-- Ganti isi `Code.gs` default dengan isi `Kode.gs` dari repo ini.
-- Buat file kedua bernama `webhook`, paste isi `webhook.gs` ke sana.
+- Ganti isi `Code.gs` default dengan isi `Kode.gs` dari repository ini.
+- Buat file kedua bernama `webhook`, lalu paste isi `webhook.gs` ke file tersebut.
 - Isi konfigurasi di bagian atas `Kode.gs`:
 
 ```javascript
@@ -147,26 +109,26 @@ var GEMINI_API_KEY = "gemini_key_kamu";
 
 ### 7. Deploy sebagai web app
 
-- **Deploy > New deployment > Web app**
+- Pilih **Deploy > New deployment > Web app**
 - Execute as: Me
 - Who has access: Anyone
-- Deploy dan authorize saat diminta
-- Copy Web App URL
+- Klik Deploy dan berikan otorisasi saat diminta
+- Salin Web App URL
 
 ### 8. Daftarkan webhook
 
-Di `webhook.gs`, isi token dan Web App URL:
+Di file `webhook.gs`, isi token dan Web App URL:
 
 ```javascript
 var token = "bot_token_kamu";
 var url = "webapp_url_kamu";
 ```
 
-Pilih function `setWebhook` dan klik Run. Cek execution log — harus ada `"ok":true`.
+Pilih function `setWebhook` dan klik **Run**. Periksa execution log — harus menampilkan `"ok":true`.
 
 ### 9. Tes
 
-Buka bot kamu di Telegram, kirim `/start`, lalu coba:
+Buka bot Anda di Telegram, kirim `/start`, lalu coba:
 
 ```
 beli kopi 25k
@@ -176,14 +138,14 @@ beli kopi 25k
 
 ## Konfigurasi
 
-Edit bagian atas `Kode.gs`:
+Edit bagian atas `Kode.gs` untuk mengatur daftar bank dan kategori:
 
 ```javascript
 var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 ```
 
-Nilai ini harus cocok dengan data validation (dropdown) di Google Sheets kolom D, F, dan G. Jika tidak cocok, sheet akan menolak penulisan data.
+**Penting:** Nilai-nilai ini harus cocok dengan data validation (dropdown) di Google Sheets pada kolom D, F, dan G. Jika tidak cocok, sheet akan menolak penulisan data.
 
 ---
 
@@ -204,31 +166,80 @@ Nilai ini harus cocok dengan data validation (dropdown) di Google Sheets kolom D
 
 ## Troubleshooting
 
-Jalankan function ini dari editor Apps Script untuk diagnosa masalah:
+Jalankan function berikut dari editor Apps Script untuk mendiagnosis masalah:
 
 | Function | Cek apa |
 |----------|---------|
 | `testGeminiConnection` | Apakah API key valid dan model mana yang merespon |
-| `listGeminiModels` | List semua model yang bisa diakses API key kamu |
-| `testAddToSheet` | Apakah data bisa ditulis ke sheet tanpa error |
+| `listGeminiModels` | Daftar semua model yang dapat diakses dengan API key Anda |
+| `testAddToSheet` | Apakah data dapat ditulis ke sheet tanpa error |
 
-Masalah umum:
+**Masalah umum:**
 
-- **AI gagal merespon** — API key kosong atau invalid. Jalankan `testGeminiConnection`.
-- **Validation error** — Output AI tidak cocok dropdown sheet. Jalankan `testAddToSheet`.
-- **Bot tidak merespon** — Webhook URL salah. Jalankan ulang `setWebhook` dengan URL benar.
-- **429 quota exceeded** — Limit free tier Gemini tercapai. Reset harian, atau enable billing.
-- **404 model not found** — Nama model sudah deprecated. Jalankan `listGeminiModels` untuk nama terbaru.
+- **AI gagal merespon** — API key kosong atau tidak valid. Jalankan `testGeminiConnection`.
+- **Validation error** — Output AI tidak sesuai dengan dropdown di sheet. Jalankan `testAddToSheet`.
+- **Bot tidak merespon** — URL webhook salah. Jalankan ulang `setWebhook` dengan URL yang benar.
+- **429 quota exceeded** — Limit free tier Gemini telah tercapai. Reset dilakukan setiap hari, atau aktifkan billing.
+- **404 model not found** — Nama model sudah deprecated. Jalankan `listGeminiModels` untuk mengetahui nama model terbaru.
 
 ---
 
 ## Input manual
 
-Jika AI tidak tersedia, kamu tetap bisa menambah data dengan format semicolon:
+Jika AI tidak tersedia, Anda tetap dapat menambah data dengan format semicolon:
 
 ```
 /tambahdata Transfer;makan;Makanan;JAGO;25000
 ```
+
+---
+
+## Apple Shortcut: Foto langsung ke sheet
+
+Untuk kemudahan, Anda dapat menggunakan Apple Shortcut agar foto dapat dikirim langsung ke Google Sheets tanpa perlu mengetik teks di Telegram.
+
+**Mengapa tidak gunakan endpoint Telegram `sendPhoto`?**  
+Foto yang dikirim melalui bot tidak masuk kembali ke webhook, sehingga tidak akan tercatat otomatis ke sheet. Oleh karena itu, gunakan endpoint Apps Script untuk memastikan foto diproses melalui alur Gemini Vision yang sama.
+
+### Langkah-langkah setup
+
+**Persiapan:**
+Tambahkan file `shortcut.gs` ke project Apps Script yang sama dengan `Kode.gs`.
+
+**STEP 1: Ambil Foto**
+- Buka Shortcuts app → tekan `+` → cari **Take Photo** → Add
+
+**STEP 2: Enkripsi Base64**
+- Cari **Base64 Encode** → Add
+
+**STEP 3: Buat Dictionary**
+- Cari **Dictionary** → Add
+- Field 1: `chat_id` = `123456789` (ganti dengan Chat ID Anda)
+- Field 2: `photo` = hasil **Base64 Encode**
+
+**STEP 4: Kirim ke API**
+- Cari **Get Contents of URL** → Add
+- URL: `https://YOUR_API_ENDPOINT` (ganti dengan Web App URL Anda)
+- Method: `POST`
+- Headers: `Content-Type: application/json`
+- Body: Dictionary dari step 3
+
+**STEP 5: Tampilkan Hasil**
+- Cari **Show Result** → Add
+
+Selesai! Bot akan mengirim konfirmasi ke Telegram setelah transaksi berhasil masuk ke sheet.
+
+**Keamanan:** Jangan masukkan bot token di dalam Shortcut. Token tetap disimpan secara aman hanya di `Kode.gs`.
+
+### Pengaturan default
+- Metode default: **Transfer**
+- Bank default: **JAGO**
+- Untuk menggunakan Cash: sebut "tunai" atau "cash" di caption
+- Untuk ganti bank: sebut nama bank lain (contoh: "BCA", "MANDIRI")
+
+### Tips penggunaan
+- Bot memahami singkatan nominal: `rb`, `ribu`, `k` = ribu; `jt`, `juta` = juta
+- Bot juga memahami tanggal relatif: `kemarin`, `2 hari lalu`, `tgl 13`, `minggu lalu`
 
 ---
 
