@@ -97,6 +97,8 @@ Open the [template sheet](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2GDH
 
 In your copied spreadsheet, click **Extensions > Apps Script**.
 
+On the first transaction write, the script automatically creates the column-I `Jenis` header and dropdown data validation for `Income`, `Expense`, and `Transfer` in I2:I999. If I1 already contains another header, or I2:I999 already contains data/formulas while I1 is blank, the script stops with an error instead of overwriting existing data; move or rename that column first.
+
 ### 6. Add the code
 
 - Replace the default `Code.gs` content with `Kode.gs` from this repo.
@@ -147,7 +149,7 @@ var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 ```
 
-These must match the data validation (dropdowns) in your Google Sheet columns D, F, and G. If they don't match, the sheet rejects the write.
+These must match the data validation (dropdowns) in your Google Sheet columns D, F, and G. The script automatically adds `Income`, `Expense`, and `Transfer` validation to column I on its first write. If I1 is already used by a header other than `Jenis`, the script refuses to overwrite that column.
 
 ---
 
@@ -163,6 +165,11 @@ These must match the data validation (dropdowns) in your Google Sheet columns D,
 | F | Kategori | dropdown |
 | G | Bank | dropdown |
 | H | Nilai | number |
+| I | Jenis | Income / Expense / Transfer |
+
+### Income summary
+
+AI transactions with type `Income` are written to a separate tab named **`Income`**, never to `Expenses`. Create that tab with Indonesian month headers (for example, `Juli`) on any header row, source labels in column A (such as `Gaji` or `Freelance`), and one `Total` row in column A. When a source is new, the bot inserts it immediately before `Total`; values for the same source and month accumulate. An incomplete configuration is rejected without writing to `Expenses`.
 
 ---
 
@@ -189,6 +196,12 @@ Common issues:
 ## Manual input
 
 If AI is unavailable, you can still add entries with the semicolon format:
+
+```
+/tambahdata Expense;Transfer;makan;Makanan;JAGO;25000
+```
+
+The legacy format remains supported and automatically uses `Expense` as the type:
 
 ```
 /tambahdata Transfer;makan;Makanan;JAGO;25000

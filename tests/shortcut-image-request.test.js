@@ -69,12 +69,34 @@ test("does not throw when Apps Script runs doPost without an HTTP event", () => 
 
 test("accepts Base64 photo data from an Apple Shortcut form body", () => {
   const script = loadScript();
-  script.handleShortcutImageTransaction = () => {};
+  let image;
+  script.handleShortcutImageTransaction = (request) => { image = request; };
 
   const response = script.handleShortcutPost({
     postData: { type: "application/x-www-form-urlencoded" },
-    parameter: { chat_id: "123456789", photo: "aGVsbG8=" }
+    parameter: { chat_id: "123456789", photo: "aGVsbG8=", caption: "gaji masuk" }
   });
 
   assert.equal(response.payload, '{"ok":true,"message":"Gambar sedang diproses."}');
+  assert.equal(image.caption, "gaji masuk");
+});
+
+test("passes the Shortcut caption to the shared transaction recorder", () => {
+  const script = loadScript();
+  let recordArgs;
+  script.sendMessage = () => ({ result: { message_id: 1 } });
+  script.parseImageWithAI = () => ({
+    ok: true,
+    data: { isTransaction: true }
+  });
+  script.recordTransaction = (...args) => { recordArgs = args; };
+
+  script.handleShortcutImageTransaction({
+    chatId: 123456789,
+    imageBase64: "aGVsbG8=",
+    mimeType: "image/jpeg",
+    caption: "gaji masuk"
+  });
+
+  assert.equal(recordArgs[4], "gaji masuk");
 });

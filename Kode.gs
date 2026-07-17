@@ -8,6 +8,13 @@ var GEMINI_API_KEY = "change_your_key"; // ISI dengan API key Gemini kamu
 var AI_MODELS = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
 var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
+var JENIS_TRANSAKSI = ["Income", "Expense", "Transfer"];
+var INCOME_KEYWORDS = /\b(terima|dapat|gaji|bayaran|pemasukan|masuk|cair)\b/i;
+
+function normalizeJenis(jenis, sourceText) {
+  if (sourceText && INCOME_KEYWORDS.test(sourceText)) return "Income";
+  return JENIS_TRANSAKSI.indexOf(jenis) !== -1 ? jenis : "Expense";
+}
 
 // Security rules untuk AI (anti prompt-injection)
 var SECURITY_RULES = `
@@ -51,7 +58,8 @@ function handleCallbackQuery(callbackQuery) {
     if (data === "/tambahdata") {
       sendMessage({
         chat_id: chatId,
-        text: "Masukkan data dengan format:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+        text: "Masukkan data dengan format:\n/tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai\n\n" +
+              "Format lama tanpa Jenis tetap didukung dan otomatis menjadi Expense."
       });
     } else if (data === "/format") {
       sendMessage({
@@ -98,7 +106,7 @@ function handleCommands(update) {
               "belanja groceries 120rb BCA kemarin\n\n" +
               "Atau kirim foto struk / bukti bayar / screenshot transfer, bot akan membacanya otomatis.\n\n" +
               "Bot akan mencatat otomatis ke sheet. " +
-              "Pakai /tambahdata untuk format manual.",
+              "Pakai /tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai untuk input manual.",
         reply_markup: {
           inline_keyboard: [
             [{ text: "Tambah Data", callback_data: "/tambahdata" }],
@@ -110,14 +118,22 @@ function handleCommands(update) {
       const dataString = text.split(" ").slice(1).join(" ");
       if (dataString) {
         const dataArray = dataString.split(";");
-        if (dataArray.length === 5) {
-          const [transaksi, uraian, kategori, bank, nilai] = dataArray;
+        if (dataArray.length === 5 || dataArray.length === 6) {
+          let jenis, transaksi, uraian, kategori, bank, nilai;
+          const isLegacyFormat = dataArray.length === 5;
+          if (dataArray.length === 6) {
+            [jenis, transaksi, uraian, kategori, bank, nilai] = dataArray;
+          } else {
+            [transaksi, uraian, kategori, bank, nilai] = dataArray;
+            jenis = "Expense";
+          }
           const now = new Date();
           const tanggal = now.getDate().toString().padStart(2, '0');
           const bulan = (now.getMonth() + 1).toString().padStart(2, '0');
           const data = {
             Tanggal: tanggal,
             Bulan: bulan,
+            Jenis: isLegacyFormat ? "Expense" : normalizeJenis(jenis, uraian),
             Transaksi: transaksi,
             Uraian: uraian,
             Kategori: kategori,
@@ -128,7 +144,7 @@ function handleCommands(update) {
             addDataToSheet(data);
             sendMessage({
               chat_id: chatId,
-              text: "Tercatat: " + dataString
+              text: "Tercatat!\nJenis: " + data.Jenis + "\n" + dataString
             });
           } catch (error) {
             console.error("Error adding data to sheet:", error);
@@ -140,13 +156,13 @@ function handleCommands(update) {
         } else {
           sendMessage({
             chat_id: chatId,
-            text: "Format data salah. Gunakan: /tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+            text: "Format data salah. Gunakan: /tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai"
           });
         }
       } else {
-        sendMessage({
-          chat_id: chatId,
-          text: "Masukkan data setelah perintah. Contoh: /tambahdata Transfer;makan;Makanan;JAGO;25000"
+          sendMessage({
+            chat_id: chatId,
+            text: "Masukkan data setelah perintah. Contoh: /tambahdata Expense;Transfer;makan;Makanan;JAGO;25000"
         });
       }
     } else if (!text.startsWith("/")) {
@@ -173,7 +189,7 @@ function handleNaturalLanguage(chatId, text) {
   if (!GEMINI_API_KEY || GEMINI_API_KEY === "change_your_key") {
     sendMessage({
       chat_id: chatId,
-      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai"
     });
     return;
   }
@@ -192,7 +208,7 @@ function handleNaturalLanguage(chatId, text) {
       editOrSend(chatId, msgId, parsed.response || "Bukan transaksi. Contoh: makan siang 25rb");
       return;
     }
-    recordTransaction(chatId, msgId, parsed);
+    recordTransaction(chatId, msgId, parsed, undefined, text);
   } catch (error) {
     console.error("NL parser error:", error);
     editOrSend(chatId, msgId, "Terjadi error saat mencatat. Coba lagi atau gunakan /tambahdata.");
@@ -257,7 +273,7 @@ function callGemini(prompt, extraParts) {
 // SHARED: simpan transaksi terparse ke sheet + balas user
 // Dipakai bersama oleh text parser dan image parser.
 // =============================================
-function recordTransaction(chatId, msgId, parsed, invalidMsg) {
+function recordTransaction(chatId, msgId, parsed, invalidMsg, sourceText) {
   invalidMsg = invalidMsg || "Gagal memahami transaksi. Coba: bayar makan di warteg 15rb";
 
   var nilai = parseFloat(parsed.nilai);
@@ -272,23 +288,32 @@ function recordTransaction(chatId, msgId, parsed, invalidMsg) {
     Tanggal: String(d.getDate()).padStart(2, "0"),
     Bulan: String(d.getMonth() + 1).padStart(2, "0"),
     Tahun: String(d.getFullYear()),
+    Jenis: normalizeJenis(parsed.jenis, sourceText || parsed.uraian || ""),
     Transaksi: parsed.transaksi,
     Uraian: parsed.uraian || "",
     Kategori: parsed.kategori || "",
     Bank: parsed.bank || "JAGO",
-    Nilai: String(nilai)
+    Nilai: String(nilai),
+    SumberIncome: sourceText || parsed.uraian || ""
   };
 
-  addDataToSheet(data);
+  var incomeSummary = null;
+  if (data.Jenis === "Income") {
+    incomeSummary = addIncomeToSheet(data);
+  } else {
+    addDataToSheet(data);
+  }
 
   var monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
   var tgl = data.Tanggal + " " + monthNames[parseInt(data.Bulan) - 1] + " " + data.Tahun;
   editOrSend(chatId, msgId, "✅ Tercatat!\n\n" +
         "📌 " + data.Transaksi + "\n" +
+        "🏷 Jenis: " + data.Jenis + "\n" +
         "📝 " + data.Uraian + "\n" +
         "🏷 " + data.Kategori + " • " + data.Bank + "\n" +
         "💰 Rp " + nilai.toLocaleString("id-ID") + "\n" +
-        "📅 " + tgl);
+        "📅 " + tgl +
+        (incomeSummary ? "\n💼 Income: " + incomeSummary.source + " • " + incomeSummary.month : ""));
   return true;
 }
 
@@ -299,7 +324,7 @@ function handleImageTransaction(chatId, fileId, caption) {
   if (!GEMINI_API_KEY || GEMINI_API_KEY === "change_your_key") {
     sendMessage({
       chat_id: chatId,
-      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai"
     });
     return;
   }
@@ -330,7 +355,8 @@ function handleImageTransaction(chatId, fileId, caption) {
       chatId,
       msgId,
       parsed,
-      "Gagal membaca transaksi dari gambar. Coba ulangi dengan caption seperti 'beli kopi 25k'."
+      "Gagal membaca transaksi dari gambar. Coba ulangi dengan caption seperti 'beli kopi 25k'.",
+      caption
     );
   } catch (error) {
     console.error("Image parser error:", error);
@@ -404,6 +430,7 @@ function buildImagePrompt(caption) {
 "If YES, return ONLY this JSON (no markdown):\n" +
 "{\n" +
 "  \"isTransaction\": true,\n" +
+"  \"jenis\": \"Income\" | \"Expense\" | \"Transfer\",\n" +
 "  \"transaksi\": \"Transfer\" | \"Cash\",\n" +
 "  \"kategori\": \"<pick from categories above>\",\n" +
 "  \"bank\": \"<pick from banks above; default JAGO jika tidak terlihat>\",\n" +
@@ -419,6 +446,7 @@ function buildImagePrompt(caption) {
 "VISION RULES:\n" +
 "- Extract the TOTAL amount paid (nilai). For receipts use the grand total; for transfer screenshots use the transferred amount.\n" +
 "- Normalize amount: \"Rp25.000\" / \"25.000\" / \"25,000\" / \"25000\" -> nilai: 25000 (plain number, no dots/commas/currency).\n" +
+"- jenis: Income for money received or salary, Expense for purchases or bills, Transfer only for movement between the user's own accounts.\n" +
 "- transaksi (payment method): \"Transfer\" if it's a bank transfer / e-wallet / QRIS / payment app screenshot. \"Cash\" only if it's a physical cash receipt clearly marked tunai.\n" +
 "- bank: detect from logo/text in image (e.g. JAGO, BCA). If e-wallet/QRIS and unclear, default JAGO.\n" +
 "- kategori: infer from merchant or items (e.g. restaurant/kopi -> Makanan, store -> Belanja, tagihan listrik -> Cicilan).\n" +
@@ -445,6 +473,7 @@ function buildParsePrompt(message) {
 "If YES, return ONLY this JSON (no markdown):\n" +
 "{\n" +
 "  \"isTransaction\": true,\n" +
+"  \"jenis\": \"Income\" | \"Expense\" | \"Transfer\",\n" +
 "  \"transaksi\": \"Transfer\" | \"Cash\",\n" +
 "  \"kategori\": \"<pick from categories above>\",\n" +
 "  \"bank\": \"<pick from banks above; default JAGO jika tidak disebut>\",\n" +
@@ -459,6 +488,7 @@ function buildParsePrompt(message) {
 "}\n\n" +
 "PHRASING & ABBREVIATIONS (Indonesian):\n" +
 "- Amount: rb/ribu=×1000, jt/juta=×1000000, k=×1000 (contoh \"25rb\"=25000, \"1.5jt\"=1500000)\n" +
+"- kolom \"jenis\": Income untuk uang diterima atau gaji, Expense untuk pembelian atau tagihan, Transfer hanya untuk perpindahan uang antar rekening milik user sendiri.\n" +
 "- kolom \"transaksi\" = METODE PEMBAYARAN, hanya 2 nilai: \"Transfer\" (bayar via transfer bank/e-wallet) atau \"Cash\" (bayar tunai/uang fisik). Default \"Transfer\" jika tidak disebut, karena user paling sering pakai transfer.\n" +
 "- \"tf\"/\"transfer\" = metode Transfer. Contoh \"tf 100k ke BCA\" -> transaksi:\"Transfer\", bank:\"BCA\"\n" +
 "- \"bayar\" + lain (makan, listrik) = beli sesuatu. Default Transfer + JAGO, kecuali disebut \"tunai\"/\"cash\" maka Cash + CASH.\n" +
@@ -524,8 +554,10 @@ function addDataToSheet(data) {
   const formattedDate = `${data.Tanggal} ${monthNames[monthIndex]} ${tahun}`;
   const numericValue = parseFloat(data.Nilai);
 
+  prepareJenisColumn(sheet);
+
   // Cari baris kosong pertama: anggap kosong jika kolom Transaksi (D) kosong
-  const range = sheet.getRange("A2:H999");
+  const range = sheet.getRange("A2:I999");
   const values = range.getValues();
 
   let emptyRow = null;
@@ -537,7 +569,7 @@ function addDataToSheet(data) {
   }
 
   if (emptyRow) {
-    sheet.getRange(emptyRow, 1, 1, 8).setValues([[
+    sheet.getRange(emptyRow, 1, 1, 9).setValues([[
       false,
       formattedDate,
       monthNames[monthIndex],
@@ -545,11 +577,106 @@ function addDataToSheet(data) {
       data.Uraian,
       data.Kategori,
       data.Bank,
-      numericValue
+      numericValue,
+      data.Jenis
     ]]);
   } else {
     throw new Error("Tidak ada baris kosong yang tersedia antara baris 2 hingga 999.");
   }
+}
+
+function addIncomeToSheet(data) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Income");
+  if (!sheet) {
+    throw new Error("Konfigurasi Income: sheet 'Income' tidak ditemukan.");
+  }
+
+  var monthNames = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  var month = monthNames[parseInt(data.Bulan, 10) - 1];
+  var monthColumn = findIncomeMonthColumn(sheet, month);
+  var source = normalizeIncomeSource(data);
+  var sourceRow = findOrCreateIncomeSourceRow(sheet, source);
+  var amountRange = sheet.getRange(sourceRow, monthColumn);
+  var currentAmount = parseFloat(amountRange.getValue());
+  var amount = parseFloat(data.Nilai);
+
+  amountRange.setValue((isNaN(currentAmount) ? 0 : currentAmount) + amount);
+  return { source: source, month: month };
+}
+
+function findIncomeMonthColumn(sheet, month) {
+  var values = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getValues();
+  for (var row = 0; row < values.length; row++) {
+    for (var column = 0; column < values[row].length; column++) {
+      if (String(values[row][column]).trim().toLowerCase() === month.toLowerCase()) {
+        return column + 1;
+      }
+    }
+  }
+  throw new Error("Konfigurasi Income: header bulan '" + month + "' tidak ditemukan.");
+}
+
+function findOrCreateIncomeSourceRow(sheet, source) {
+  var values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
+  var normalizedSource = source.toLowerCase();
+  var totalRow = null;
+
+  for (var row = 0; row < values.length; row++) {
+    var label = String(values[row][0]).trim();
+    if (label.toLowerCase() === normalizedSource) return row + 1;
+    if (label.toLowerCase() === "total") totalRow = row + 1;
+  }
+
+  if (!totalRow) {
+    throw new Error("Konfigurasi Income: baris 'Total' tidak ditemukan.");
+  }
+
+  sheet.insertRowsBefore(totalRow, 1);
+  sheet.getRange(totalRow, 1).setValue(source);
+  return totalRow;
+}
+
+function normalizeIncomeSource(data) {
+  var description = String(data.SumberIncome || data.Uraian || "").trim();
+  if (/\bgaji\b/i.test(description)) return "Gaji";
+  description = description.toLowerCase();
+  return description.charAt(0).toUpperCase() + description.slice(1);
+}
+
+function prepareJenisColumn(sheet) {
+  var requiredColumn = 9;
+  var maxColumns = sheet.getMaxColumns();
+  if (maxColumns < requiredColumn) {
+    sheet.insertColumnsAfter(maxColumns, requiredColumn - maxColumns);
+  }
+
+  var headerRange = sheet.getRange(1, requiredColumn);
+  var header = headerRange.getValue();
+  if (header === "") {
+    var jenisRange = sheet.getRange("I2:I999");
+    if (hasJenisColumnContent(jenisRange.getValues(), jenisRange.getFormulas())) {
+      throw new Error("Kolom I berisi data atau formula; tidak dapat menyiapkan Jenis tanpa menimpa data.");
+    }
+    headerRange.setValue("Jenis");
+  } else if (header !== "Jenis") {
+    throw new Error("Kolom I harus memiliki header 'Jenis'; ditemukan '" + header + "'.");
+  }
+
+  var validation = SpreadsheetApp.newDataValidation()
+    .requireValueInList(JENIS_TRANSAKSI, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange("I2:I999").setDataValidation(validation);
+}
+
+function hasJenisColumnContent(values, formulas) {
+  for (var i = 0; i < values.length; i++) {
+    if ((values[i][0] !== "" && values[i][0] !== null) || formulas[i][0] !== "") return true;
+  }
+  return false;
 }
 
 // =============================================
@@ -630,6 +757,7 @@ function testAddToSheet() {
     Tanggal: "17",
     Bulan: "7",
     Tahun: "2026",
+    Jenis: "Expense",
     Transaksi: "Cash",
     Uraian: "TEST beli kopi (hapus baris ini)",
     Kategori: "Makanan",
@@ -650,7 +778,7 @@ function testAddToSheet() {
   Logger.log("OK: Sheet 'Expenses' found. Active spreadsheet: " + ss.getName());
 
   Logger.log("\n--- BEFORE (rows 1-5) ---");
-  var before = sheet.getRange("A1:H5").getValues();
+  var before = sheet.getRange("A1:I5").getValues();
   for (var i = 0; i < before.length; i++) {
     Logger.log("Row " + (i+1) + ": " + JSON.stringify(before[i]));
   }
@@ -664,7 +792,7 @@ function testAddToSheet() {
   }
 
   Logger.log("\n--- AFTER (searching for TEST in rows 2-20) ---");
-  var after = sheet.getRange("A2:H20").getValues();
+  var after = sheet.getRange("A2:I20").getValues();
   var found = false;
   for (var i = 0; i < after.length; i++) {
     var rowStr = JSON.stringify(after[i]);

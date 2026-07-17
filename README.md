@@ -95,6 +95,8 @@ Buka [spreadsheet template](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2G
 
 Di spreadsheet yang sudah disalin, klik **Extensions > Apps Script**.
 
+Saat transaksi pertama ditulis, script otomatis menyiapkan header `Jenis` di kolom I dan data validation dropdown untuk `Income`, `Expense`, dan `Transfer` pada I2:I999. Jika I1 sudah berisi header lain, atau I2:I999 sudah berisi data/formula saat I1 kosong, script berhenti dengan error agar data yang ada tidak tertimpa; ubah atau pindahkan kolom tersebut terlebih dahulu.
+
 ### 6. Masukkan kode
 
 - Ganti isi `Code.gs` default dengan isi `Kode.gs` dari repository ini.
@@ -145,7 +147,7 @@ var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 ```
 
-**Penting:** Nilai-nilai ini harus cocok dengan data validation (dropdown) di Google Sheets pada kolom D, F, dan G. Jika tidak cocok, sheet akan menolak penulisan data.
+**Penting:** Nilai-nilai ini harus cocok dengan data validation (dropdown) di Google Sheets pada kolom D, F, dan G. Script otomatis menambahkan validation `Income`, `Expense`, dan `Transfer` di kolom I saat pertama kali menulis. Jika I1 sudah dipakai oleh header selain `Jenis`, script akan menolak menimpa kolom tersebut.
 
 ---
 
@@ -161,6 +163,11 @@ var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"
 | F | Kategori | dropdown |
 | G | Bank | dropdown |
 | H | Nilai | angka |
+| I | Jenis | Income / Expense / Transfer |
+
+### Ringkasan Income
+
+Transaksi AI bertipe `Income` dicatat ke tab terpisah bernama **`Income`**, bukan ke `Expenses`. Buat tab ini dengan nama tersebut, tulis header bulan bahasa Indonesia (misalnya `Juli`) pada baris header mana pun, label sumber di kolom A (misalnya `Gaji` atau `Freelance`), dan satu baris `Total` di kolom A. Jika sumber belum ada, bot menambahkannya tepat sebelum `Total`; nilai untuk sumber dan bulan yang sama akan dijumlahkan. Konfigurasi yang tidak lengkap akan ditolak tanpa menulis ke `Expenses`.
 
 ---
 
@@ -187,6 +194,12 @@ Jalankan function berikut dari editor Apps Script untuk mendiagnosis masalah:
 ## Input manual
 
 Jika AI tidak tersedia, Anda tetap dapat menambah data dengan format semicolon:
+
+```
+/tambahdata Expense;Transfer;makan;Makanan;JAGO;25000
+```
+
+Format lama tetap didukung dan otomatis menggunakan `Expense` sebagai Jenis:
 
 ```
 /tambahdata Transfer;makan;Makanan;JAGO;25000
