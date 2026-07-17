@@ -120,6 +120,7 @@ function handleCommands(update) {
         const dataArray = dataString.split(";");
         if (dataArray.length === 5 || dataArray.length === 6) {
           let jenis, transaksi, uraian, kategori, bank, nilai;
+          const isLegacyFormat = dataArray.length === 5;
           if (dataArray.length === 6) {
             [jenis, transaksi, uraian, kategori, bank, nilai] = dataArray;
           } else {
@@ -132,7 +133,7 @@ function handleCommands(update) {
           const data = {
             Tanggal: tanggal,
             Bulan: bulan,
-            Jenis: normalizeJenis(jenis, uraian),
+            Jenis: isLegacyFormat ? "Expense" : normalizeJenis(jenis, uraian),
             Transaksi: transaksi,
             Uraian: uraian,
             Kategori: kategori,
@@ -587,6 +588,10 @@ function prepareJenisColumn(sheet) {
   var headerRange = sheet.getRange(1, requiredColumn);
   var header = headerRange.getValue();
   if (header === "") {
+    var jenisRange = sheet.getRange("I2:I999");
+    if (hasJenisColumnContent(jenisRange.getValues(), jenisRange.getFormulas())) {
+      throw new Error("Kolom I berisi data atau formula; tidak dapat menyiapkan Jenis tanpa menimpa data.");
+    }
     headerRange.setValue("Jenis");
   } else if (header !== "Jenis") {
     throw new Error("Kolom I harus memiliki header 'Jenis'; ditemukan '" + header + "'.");
@@ -597,6 +602,13 @@ function prepareJenisColumn(sheet) {
     .setAllowInvalid(false)
     .build();
   sheet.getRange("I2:I999").setDataValidation(validation);
+}
+
+function hasJenisColumnContent(values, formulas) {
+  for (var i = 0; i < values.length; i++) {
+    if ((values[i][0] !== "" && values[i][0] !== null) || formulas[i][0] !== "") return true;
+  }
+  return false;
 }
 
 // =============================================

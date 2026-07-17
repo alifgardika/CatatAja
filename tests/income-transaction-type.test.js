@@ -10,7 +10,9 @@ function loadScript(options = {}) {
     headerWrites: 0,
     maxColumns: options.maxColumns || 9,
     insertedColumns: 0,
-    validation: null
+    validation: null,
+    jenisValues: options.jenisValues || Array.from({ length: 998 }, () => [""]),
+    jenisFormulas: options.jenisFormulas || Array.from({ length: 998 }, () => [""])
   };
   const context = {
     SpreadsheetApp: {
@@ -49,6 +51,12 @@ function loadScript(options = {}) {
                 if (typeof a1OrRow === "string") {
                   if (a1OrRow === "I2:I999") {
                     return {
+                      getValues() {
+                        return sheet.jenisValues;
+                      },
+                      getFormulas() {
+                        return sheet.jenisFormulas;
+                      },
                       setDataValidation(validation) {
                         sheet.validation = validation;
                       }
@@ -138,6 +146,12 @@ test("manual input keeps legacy five fields and defaults Jenis to Expense", () =
   assert.equal(data.Nilai, "25000");
 });
 
+test("legacy manual input stays Expense when its description contains income keywords", () => {
+  const { data } = submitManualTransaction("/tambahdata Transfer;gaji masuk;Tabungan;JAGO;5000000");
+
+  assert.equal(data.Jenis, "Expense");
+});
+
 test("manual input accepts six fields with Jenis first", () => {
   const { data } = submitManualTransaction("/tambahdata Income;Transfer;gaji;Tabungan;JAGO;5000000");
 
@@ -201,6 +215,30 @@ test("initializes a blank Jenis header and validation before writing", () => {
   assert.equal(sheet.header, "Jenis");
   assert.deepEqual(JSON.parse(JSON.stringify(sheet.validation.values)), ["Income", "Expense", "Transfer"]);
   assert.equal(sheet.validation.allowInvalid, false);
+});
+
+test("rejects a blank Jenis header when column I already has a value", () => {
+  const { context, writes, sheet } = loadScript({ jenisValues: [["legacy type"]] });
+
+  assert.throws(
+    () => context.addDataToSheet({ Tanggal: "17", Bulan: "7", Jenis: "Income", Transaksi: "Transfer", Nilai: "5000000" }),
+    /Kolom I.*data atau formula/
+  );
+  assert.equal(sheet.headerWrites, 0);
+  assert.equal(sheet.validation, null);
+  assert.equal(writes.length, 0);
+});
+
+test("rejects a blank Jenis header when column I already has a formula", () => {
+  const { context, writes, sheet } = loadScript({ jenisFormulas: [["=H2"]] });
+
+  assert.throws(
+    () => context.addDataToSheet({ Tanggal: "17", Bulan: "7", Jenis: "Income", Transaksi: "Transfer", Nilai: "5000000" }),
+    /Kolom I.*data atau formula/
+  );
+  assert.equal(sheet.headerWrites, 0);
+  assert.equal(sheet.validation, null);
+  assert.equal(writes.length, 0);
 });
 
 test("applies validation without rewriting a preexisting Jenis header", () => {
