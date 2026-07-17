@@ -165,6 +165,10 @@ var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"
 | H | Nilai | angka |
 | I | Jenis | Income / Expense / Transfer |
 
+### Ringkasan Income
+
+Transaksi AI bertipe `Income` dicatat ke tab terpisah bernama **`Income`**, bukan ke `Expenses`. Buat tab ini dengan nama tersebut, tulis header bulan bahasa Indonesia (misalnya `Juli`) pada baris header mana pun, label sumber di kolom A (misalnya `Gaji` atau `Freelance`), dan satu baris `Total` di kolom A. Jika sumber belum ada, bot menambahkannya tepat sebelum `Total`; nilai untuk sumber dan bulan yang sama akan dijumlahkan. Konfigurasi yang tidak lengkap akan ditolak tanpa menulis ke `Expenses`.
+
 ---
 
 ## Troubleshooting

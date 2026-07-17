@@ -5,6 +5,7 @@ const vm = require("node:vm");
 
 function loadScript(options = {}) {
   const writes = [];
+  const income = options.income;
   const sheet = {
     header: options.header || "",
     headerWrites: 0,
@@ -14,6 +15,33 @@ function loadScript(options = {}) {
     jenisValues: options.jenisValues || Array.from({ length: 998 }, () => [""]),
     jenisFormulas: options.jenisFormulas || Array.from({ length: 998 }, () => [""])
   };
+  const incomeSheet = income && {
+    values: income.values.map((row) => row.slice()),
+    insertions: []
+  };
+  if (incomeSheet) {
+    incomeSheet.getLastRow = () => incomeSheet.values.length;
+    incomeSheet.getLastColumn = () => Math.max(...incomeSheet.values.map((row) => row.length));
+    incomeSheet.getRange = (row, column, rows = 1, columns = 1) => ({
+      getValues() {
+        return Array.from({ length: rows }, (_, rowOffset) => Array.from({ length: columns }, (_, columnOffset) =>
+          incomeSheet.values[row - 1 + rowOffset]?.[column - 1 + columnOffset] ?? ""
+        ));
+      },
+      getValue() {
+        return incomeSheet.values[row - 1]?.[column - 1] ?? "";
+      },
+      setValue(value) {
+        while (incomeSheet.values.length < row) incomeSheet.values.push([]);
+        while (incomeSheet.values[row - 1].length < column) incomeSheet.values[row - 1].push("");
+        incomeSheet.values[row - 1][column - 1] = value;
+      }
+    });
+    incomeSheet.insertRowsBefore = (row, howMany) => {
+      incomeSheet.insertions.push({ row, howMany });
+      incomeSheet.values.splice(row - 1, 0, ...Array.from({ length: howMany }, () => []));
+    };
+  }
   const context = {
     SpreadsheetApp: {
       newDataValidation() {
@@ -39,6 +67,7 @@ function loadScript(options = {}) {
       getActiveSpreadsheet() {
         return {
           getSheetByName() {
+            if (arguments[0] === "Income") return incomeSheet;
             return {
               getMaxColumns() {
                 return sheet.maxColumns;
@@ -93,7 +122,15 @@ function loadScript(options = {}) {
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync("Kode.gs", "utf8"), context);
-  return { context, writes, sheet };
+  return { context, writes, sheet, incomeSheet };
+}
+
+function incomeTable({ includeSheet = true, includeMonth = true, includeTotal = true, source = "Gaji" } = {}) {
+  if (!includeSheet) return undefined;
+  const headers = ["Sumber", "Januari", "Februari", "Maret", "April", "Mei", "Juni", includeMonth ? "Juli" : "Agustus"];
+  const rows = [["Laporan Income"], [], headers, [source, 0, 0, 0, 0, 0, 0, 0]];
+  if (includeTotal) rows.push(["Total", 0, 0, 0, 0, 0, 0, 0]);
+  return { values: rows };
 }
 
 test("classifies gaji masuk as Income even if AI says Expense", () => {
@@ -171,6 +208,7 @@ test("confirmation displays Jenis separately", () => {
   const messages = [];
   context.Utilities = { formatDate: () => "2026-07-17" };
   context.addDataToSheet = () => {};
+  context.addIncomeToSheet = () => ({ source: "Gaji", month: "Juli" });
   context.editOrSend = (chatId, msgId, text) => messages.push(text);
 
   context.recordTransaction(123456789, 1, {
@@ -184,6 +222,69 @@ test("confirmation displays Jenis separately", () => {
   }, undefined, "gaji masuk");
 
   assert.match(messages[0], /Jenis: Income/);
+});
+
+test("salary income accumulates in a case-insensitive Gaji row for Juli", () => {
+  const { context, writes, incomeSheet } = loadScript({ income: incomeTable({ source: "gAjI" }) });
+  const messages = [];
+  context.Utilities = { formatDate: () => "2026-07-17" };
+  context.editOrSend = (chatId, msgId, text) => messages.push(text);
+
+  context.recordTransaction(123456789, 1, {
+    jenis: "Income", transaksi: "Transfer", uraian: "gaji bulanan", kategori: "Tabungan", bank: "JAGO", nilai: "5000000", date: "2026-07-17"
+  }, undefined, "gaji masuk");
+
+  assert.equal(writes.length, 0);
+  assert.equal(incomeSheet.values[3][7], 5000000);
+  assert.match(messages[0], /Gaji.*Juli/);
+});
+
+test("income creates a title-cased source row immediately before Total", () => {
+  const { context, incomeSheet } = loadScript({ income: incomeTable() });
+
+  context.addIncomeToSheet({ Bulan: "07", Uraian: "jual server", Nilai: "150000" });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(incomeSheet.insertions)), [{ row: 5, howMany: 1 }]);
+  assert.equal(incomeSheet.values[4][0], "Jual server");
+  assert.equal(incomeSheet.values[4][7], 150000);
+  assert.equal(incomeSheet.values[5][0], "Total");
+});
+
+test("repeated dynamic income source accumulates in its existing row", () => {
+  const { context, incomeSheet } = loadScript({ income: incomeTable() });
+
+  context.addIncomeToSheet({ Bulan: "07", Uraian: "jual server", Nilai: "150000" });
+  context.addIncomeToSheet({ Bulan: "07", Uraian: "JUAL SERVER", Nilai: "50000" });
+
+  assert.equal(incomeSheet.insertions.length, 1);
+  assert.equal(incomeSheet.values[4][7], 200000);
+});
+
+test("income requires an Income sheet", () => {
+  const { context } = loadScript();
+
+  assert.throws(
+    () => context.addIncomeToSheet({ Bulan: "07", Uraian: "jual server", Nilai: "150000" }),
+    /Konfigurasi Income: sheet 'Income' tidak ditemukan/
+  );
+});
+
+test("income requires the target month header", () => {
+  const { context } = loadScript({ income: incomeTable({ includeMonth: false }) });
+
+  assert.throws(
+    () => context.addIncomeToSheet({ Bulan: "07", Uraian: "jual server", Nilai: "150000" }),
+    /Konfigurasi Income: header bulan 'Juli' tidak ditemukan/
+  );
+});
+
+test("income requires a Total row", () => {
+  const { context } = loadScript({ income: incomeTable({ includeTotal: false }) });
+
+  assert.throws(
+    () => context.addIncomeToSheet({ Bulan: "07", Uraian: "jual server", Nilai: "150000" }),
+    /Konfigurasi Income: baris 'Total' tidak ditemukan/
+  );
 });
 
 test("writes Jenis to column I", () => {

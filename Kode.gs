@@ -293,10 +293,16 @@ function recordTransaction(chatId, msgId, parsed, invalidMsg, sourceText) {
     Uraian: parsed.uraian || "",
     Kategori: parsed.kategori || "",
     Bank: parsed.bank || "JAGO",
-    Nilai: String(nilai)
+    Nilai: String(nilai),
+    SumberIncome: sourceText || parsed.uraian || ""
   };
 
-  addDataToSheet(data);
+  var incomeSummary = null;
+  if (data.Jenis === "Income") {
+    incomeSummary = addIncomeToSheet(data);
+  } else {
+    addDataToSheet(data);
+  }
 
   var monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
   var tgl = data.Tanggal + " " + monthNames[parseInt(data.Bulan) - 1] + " " + data.Tahun;
@@ -306,7 +312,8 @@ function recordTransaction(chatId, msgId, parsed, invalidMsg, sourceText) {
         "📝 " + data.Uraian + "\n" +
         "🏷 " + data.Kategori + " • " + data.Bank + "\n" +
         "💰 Rp " + nilai.toLocaleString("id-ID") + "\n" +
-        "📅 " + tgl);
+        "📅 " + tgl +
+        (incomeSummary ? "\n💼 Income: " + incomeSummary.source + " • " + incomeSummary.month : ""));
   return true;
 }
 
@@ -576,6 +583,67 @@ function addDataToSheet(data) {
   } else {
     throw new Error("Tidak ada baris kosong yang tersedia antara baris 2 hingga 999.");
   }
+}
+
+function addIncomeToSheet(data) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Income");
+  if (!sheet) {
+    throw new Error("Konfigurasi Income: sheet 'Income' tidak ditemukan.");
+  }
+
+  var monthNames = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  var month = monthNames[parseInt(data.Bulan, 10) - 1];
+  var monthColumn = findIncomeMonthColumn(sheet, month);
+  var source = normalizeIncomeSource(data);
+  var sourceRow = findOrCreateIncomeSourceRow(sheet, source);
+  var amountRange = sheet.getRange(sourceRow, monthColumn);
+  var currentAmount = parseFloat(amountRange.getValue());
+  var amount = parseFloat(data.Nilai);
+
+  amountRange.setValue((isNaN(currentAmount) ? 0 : currentAmount) + amount);
+  return { source: source, month: month };
+}
+
+function findIncomeMonthColumn(sheet, month) {
+  var values = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getValues();
+  for (var row = 0; row < values.length; row++) {
+    for (var column = 0; column < values[row].length; column++) {
+      if (String(values[row][column]).trim().toLowerCase() === month.toLowerCase()) {
+        return column + 1;
+      }
+    }
+  }
+  throw new Error("Konfigurasi Income: header bulan '" + month + "' tidak ditemukan.");
+}
+
+function findOrCreateIncomeSourceRow(sheet, source) {
+  var values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
+  var normalizedSource = source.toLowerCase();
+  var totalRow = null;
+
+  for (var row = 0; row < values.length; row++) {
+    var label = String(values[row][0]).trim();
+    if (label.toLowerCase() === normalizedSource) return row + 1;
+    if (label.toLowerCase() === "total") totalRow = row + 1;
+  }
+
+  if (!totalRow) {
+    throw new Error("Konfigurasi Income: baris 'Total' tidak ditemukan.");
+  }
+
+  sheet.insertRowsBefore(totalRow, 1);
+  sheet.getRange(totalRow, 1).setValue(source);
+  return totalRow;
+}
+
+function normalizeIncomeSource(data) {
+  var description = String(data.SumberIncome || data.Uraian || "").trim();
+  if (/\bgaji\b/i.test(description)) return "Gaji";
+  description = description.toLowerCase();
+  return description.charAt(0).toUpperCase() + description.slice(1);
 }
 
 function prepareJenisColumn(sheet) {

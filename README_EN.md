@@ -167,6 +167,10 @@ These must match the data validation (dropdowns) in your Google Sheet columns D,
 | H | Nilai | number |
 | I | Jenis | Income / Expense / Transfer |
 
+### Income summary
+
+AI transactions with type `Income` are written to a separate tab named **`Income`**, never to `Expenses`. Create that tab with Indonesian month headers (for example, `Juli`) on any header row, source labels in column A (such as `Gaji` or `Freelance`), and one `Total` row in column A. When a source is new, the bot inserts it immediately before `Total`; values for the same source and month accumulate. An incomplete configuration is rejected without writing to `Expenses`.
+
 ---
 
 ## Troubleshooting
