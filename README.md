@@ -22,13 +22,15 @@ Bot membalas (pesan yang sama di-edit, tanpa spam pesan baru):
 ✅ Tercatat!
 
 📌 Transfer
-📝 beli kopi
-🏷 Makanan • JAGO
-💰 Rp 25.000
+🏷 Jenis: Income
+📝 Gaji masuk
+🏷 Tabungan • JAGO
+💰 Rp 5.000.000
 📅 17 Juli 2026
+💼 Income: Gaji • Juli
 ```
 
-Baris tersebut masuk ke tab "Expenses" di Google Sheets kamu.
+Pengeluaran masuk ke tab `Expenses`. Pemasukan masuk ke tab `Income` sesuai sumber dan bulan transaksi.
 
 ![Penggunaan bot di Telegram](img/3.jpg)
 
@@ -46,13 +48,14 @@ Dashboard dan sheet di Google Sheets:
 
 ## Contoh
 
-| Kamu ketik | Metode | Bank | Kategori | Nilai |
-|------------|--------|------|----------|-------|
-| `beli kopi 25k` | Transfer | JAGO | Makanan | 25.000 |
-| `bayar shopee 120k` | Transfer | JAGO | Belanja | 120.000 |
-| `makan siang 15k tunai` | Cash | CASH | Makanan | 15.000 |
-| `jual server 150k` | Transfer | JAGO | server | 150.000 |
-| `beli groceries 120rb BCA kemarin` | Transfer | BCA | Belanja | 120.000 |
+| Kamu ketik | Jenis | Metode | Tujuan | Nilai |
+|------------|-------|--------|---------|-------|
+| `beli kopi 25k` | Expense | Transfer | Makanan | 25.000 |
+| `bayar shopee 120k` | Expense | Transfer | Belanja | 120.000 |
+| `makan siang 15k tunai` | Expense | Cash | Makanan | 15.000 |
+| `masuk gaji 5jt` | Income | Transfer | `Income!Gaji` bulan berjalan | 5.000.000 |
+| `duit masuk jual server 150k` | Income | Transfer | `Income!Jual server` bulan berjalan | 150.000 |
+| `beli groceries 120rb BCA kemarin` | Expense | Transfer | Belanja | 120.000 |
 
 ## Kirim gambar / struk
 
@@ -167,7 +170,7 @@ var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"
 
 ### Ringkasan Income
 
-Transaksi AI bertipe `Income` dicatat ke tab terpisah bernama **`Income`**, bukan ke `Expenses`. Buat tab ini dengan nama tersebut, tulis header bulan bahasa Indonesia (misalnya `Juli`) pada baris header mana pun, label sumber di kolom A (misalnya `Gaji` atau `Freelance`), dan satu baris `Total` di kolom A. Jika sumber belum ada, bot menambahkannya tepat sebelum `Total`; nilai untuk sumber dan bulan yang sama akan dijumlahkan. Konfigurasi yang tidak lengkap akan ditolak tanpa menulis ke `Expenses`.
+Transaksi AI bertipe `Income` dicatat ke tab terpisah bernama **`Income`**, bukan ke `Expenses`. Buat tab ini dengan nama tersebut, tulis header bulan bahasa Indonesia (misalnya `Juli`) pada baris header mana pun, label sumber di kolom A (misalnya `Gaji` atau `Freelance`), dan satu baris `Total` di kolom A. `masuk gaji 5jt` menambah nilai ke baris `Gaji` pada kolom bulan transaksi. Sumber baru seperti `duit masuk jual server 150k` membuat baris `Jual server` tepat sebelum `Total`. Nilai untuk sumber dan bulan yang sama selalu dijumlahkan. Konfigurasi yang tidak lengkap akan ditolak tanpa menulis ke `Expenses`.
 
 ---
 

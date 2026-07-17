@@ -22,13 +22,15 @@ The bot replies (edits the same message, no spam):
 ✅ Tercatat!
 
 📌 Transfer
-📝 beli kopi
-🏷 Makanan • JAGO
-💰 Rp 25.000
+🏷 Jenis: Income
+📝 Gaji masuk
+🏷 Tabungan • JAGO
+💰 Rp 5.000.000
 📅 17 Juli 2026
+💼 Income: Gaji • Juli
 ```
 
-The row lands in your Google Sheet's "Expenses" tab.
+Expenses are written to `Expenses`; income is summarized in `Income` by source and transaction month.
 
 ![Bot usage in Telegram](img/3.jpg)
 
@@ -44,13 +46,14 @@ Dashboard and sheets in Google Sheets:
 
 ## Examples
 
-| You type | Method | Bank | Category | Amount |
-|----------|--------|------|----------|--------|
-| `beli kopi 25k` | Transfer | JAGO | Makanan | 25.000 |
-| `bayar shopee 120k` | Transfer | JAGO | Belanja | 120.000 |
-| `makan siang 15k tunai` | Cash | CASH | Makanan | 15.000 |
-| `jual server 150k` | Transfer | JAGO | server | 150.000 |
-| `beli groceries 120rb BCA kemarin` | Transfer | BCA | Belanja | 120.000 |
+| You type | Type | Method | Destination | Amount |
+|----------|------|--------|-------------|--------|
+| `beli kopi 25k` | Expense | Transfer | Makanan | 25.000 |
+| `bayar shopee 120k` | Expense | Transfer | Belanja | 120.000 |
+| `makan siang 15k tunai` | Expense | Cash | Makanan | 15.000 |
+| `masuk gaji 5jt` | Income | Transfer | `Income!Gaji` for the transaction month | 5.000.000 |
+| `duit masuk jual server 150k` | Income | Transfer | `Income!Jual server` for the transaction month | 150.000 |
+| `beli groceries 120rb BCA kemarin` | Expense | Transfer | Belanja | 120.000 |
 
 ## Send an image / receipt
 
@@ -169,7 +172,7 @@ These must match the data validation (dropdowns) in your Google Sheet columns D,
 
 ### Income summary
 
-AI transactions with type `Income` are written to a separate tab named **`Income`**, never to `Expenses`. Create that tab with Indonesian month headers (for example, `Juli`) on any header row, source labels in column A (such as `Gaji` or `Freelance`), and one `Total` row in column A. When a source is new, the bot inserts it immediately before `Total`; values for the same source and month accumulate. An incomplete configuration is rejected without writing to `Expenses`.
+AI transactions with type `Income` are written to a separate tab named **`Income`**, never to `Expenses`. Create that tab with Indonesian month headers (for example, `Juli`) on any header row, source labels in column A (such as `Gaji` or `Freelance`), and one `Total` row in column A. `masuk gaji 5jt` adds to the `Gaji` row for the transaction month. A new source such as `duit masuk jual server 150k` creates a `Jual server` row immediately before `Total`. Values for the same source and month always accumulate. An incomplete configuration is rejected without writing to `Expenses`.
 
 ---
 
