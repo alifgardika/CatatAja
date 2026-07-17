@@ -78,7 +78,7 @@ Do not use Telegram's `sendPhoto` endpoint: a photo sent by a bot does not retur
 3. Configure **Get Contents of URL**:
    - URL: your Apps Script Web App URL
    - Method: `POST`
-   - Request Body: `Form`
+   - Request Body: `JSON`
    - Dictionary:
 
 ```json
