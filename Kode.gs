@@ -8,6 +8,13 @@ var GEMINI_API_KEY = "change_your_key"; // ISI dengan API key Gemini kamu
 var AI_MODELS = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
 var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
+var JENIS_TRANSAKSI = ["Income", "Expense", "Transfer"];
+var INCOME_KEYWORDS = /\b(terima|dapat|gaji|bayaran|pemasukan|masuk|cair)\b/i;
+
+function normalizeJenis(jenis, sourceText) {
+  if (sourceText && INCOME_KEYWORDS.test(sourceText)) return "Income";
+  return JENIS_TRANSAKSI.indexOf(jenis) !== -1 ? jenis : "Expense";
+}
 
 // Security rules untuk AI (anti prompt-injection)
 var SECURITY_RULES = `
@@ -192,7 +199,7 @@ function handleNaturalLanguage(chatId, text) {
       editOrSend(chatId, msgId, parsed.response || "Bukan transaksi. Contoh: makan siang 25rb");
       return;
     }
-    recordTransaction(chatId, msgId, parsed);
+    recordTransaction(chatId, msgId, parsed, undefined, text);
   } catch (error) {
     console.error("NL parser error:", error);
     editOrSend(chatId, msgId, "Terjadi error saat mencatat. Coba lagi atau gunakan /tambahdata.");
@@ -257,7 +264,7 @@ function callGemini(prompt, extraParts) {
 // SHARED: simpan transaksi terparse ke sheet + balas user
 // Dipakai bersama oleh text parser dan image parser.
 // =============================================
-function recordTransaction(chatId, msgId, parsed, invalidMsg) {
+function recordTransaction(chatId, msgId, parsed, invalidMsg, sourceText) {
   invalidMsg = invalidMsg || "Gagal memahami transaksi. Coba: bayar makan di warteg 15rb";
 
   var nilai = parseFloat(parsed.nilai);
@@ -272,6 +279,7 @@ function recordTransaction(chatId, msgId, parsed, invalidMsg) {
     Tanggal: String(d.getDate()).padStart(2, "0"),
     Bulan: String(d.getMonth() + 1).padStart(2, "0"),
     Tahun: String(d.getFullYear()),
+    Jenis: normalizeJenis(parsed.jenis, sourceText || parsed.uraian || ""),
     Transaksi: parsed.transaksi,
     Uraian: parsed.uraian || "",
     Kategori: parsed.kategori || "",
@@ -330,7 +338,8 @@ function handleImageTransaction(chatId, fileId, caption) {
       chatId,
       msgId,
       parsed,
-      "Gagal membaca transaksi dari gambar. Coba ulangi dengan caption seperti 'beli kopi 25k'."
+      "Gagal membaca transaksi dari gambar. Coba ulangi dengan caption seperti 'beli kopi 25k'.",
+      caption
     );
   } catch (error) {
     console.error("Image parser error:", error);
@@ -404,6 +413,7 @@ function buildImagePrompt(caption) {
 "If YES, return ONLY this JSON (no markdown):\n" +
 "{\n" +
 "  \"isTransaction\": true,\n" +
+"  \"jenis\": \"Income\" | \"Expense\" | \"Transfer\",\n" +
 "  \"transaksi\": \"Transfer\" | \"Cash\",\n" +
 "  \"kategori\": \"<pick from categories above>\",\n" +
 "  \"bank\": \"<pick from banks above; default JAGO jika tidak terlihat>\",\n" +
@@ -419,6 +429,7 @@ function buildImagePrompt(caption) {
 "VISION RULES:\n" +
 "- Extract the TOTAL amount paid (nilai). For receipts use the grand total; for transfer screenshots use the transferred amount.\n" +
 "- Normalize amount: \"Rp25.000\" / \"25.000\" / \"25,000\" / \"25000\" -> nilai: 25000 (plain number, no dots/commas/currency).\n" +
+"- jenis: Income for money received or salary, Expense for purchases or bills, Transfer only for movement between the user's own accounts.\n" +
 "- transaksi (payment method): \"Transfer\" if it's a bank transfer / e-wallet / QRIS / payment app screenshot. \"Cash\" only if it's a physical cash receipt clearly marked tunai.\n" +
 "- bank: detect from logo/text in image (e.g. JAGO, BCA). If e-wallet/QRIS and unclear, default JAGO.\n" +
 "- kategori: infer from merchant or items (e.g. restaurant/kopi -> Makanan, store -> Belanja, tagihan listrik -> Cicilan).\n" +
@@ -445,6 +456,7 @@ function buildParsePrompt(message) {
 "If YES, return ONLY this JSON (no markdown):\n" +
 "{\n" +
 "  \"isTransaction\": true,\n" +
+"  \"jenis\": \"Income\" | \"Expense\" | \"Transfer\",\n" +
 "  \"transaksi\": \"Transfer\" | \"Cash\",\n" +
 "  \"kategori\": \"<pick from categories above>\",\n" +
 "  \"bank\": \"<pick from banks above; default JAGO jika tidak disebut>\",\n" +
@@ -459,6 +471,7 @@ function buildParsePrompt(message) {
 "}\n\n" +
 "PHRASING & ABBREVIATIONS (Indonesian):\n" +
 "- Amount: rb/ribu=×1000, jt/juta=×1000000, k=×1000 (contoh \"25rb\"=25000, \"1.5jt\"=1500000)\n" +
+"- kolom \"jenis\": Income untuk uang diterima atau gaji, Expense untuk pembelian atau tagihan, Transfer hanya untuk perpindahan uang antar rekening milik user sendiri.\n" +
 "- kolom \"transaksi\" = METODE PEMBAYARAN, hanya 2 nilai: \"Transfer\" (bayar via transfer bank/e-wallet) atau \"Cash\" (bayar tunai/uang fisik). Default \"Transfer\" jika tidak disebut, karena user paling sering pakai transfer.\n" +
 "- \"tf\"/\"transfer\" = metode Transfer. Contoh \"tf 100k ke BCA\" -> transaksi:\"Transfer\", bank:\"BCA\"\n" +
 "- \"bayar\" + lain (makan, listrik) = beli sesuatu. Default Transfer + JAGO, kecuali disebut \"tunai\"/\"cash\" maka Cash + CASH.\n" +
@@ -525,7 +538,7 @@ function addDataToSheet(data) {
   const numericValue = parseFloat(data.Nilai);
 
   // Cari baris kosong pertama: anggap kosong jika kolom Transaksi (D) kosong
-  const range = sheet.getRange("A2:H999");
+  const range = sheet.getRange("A2:I999");
   const values = range.getValues();
 
   let emptyRow = null;
@@ -537,7 +550,7 @@ function addDataToSheet(data) {
   }
 
   if (emptyRow) {
-    sheet.getRange(emptyRow, 1, 1, 8).setValues([[
+    sheet.getRange(emptyRow, 1, 1, 9).setValues([[
       false,
       formattedDate,
       monthNames[monthIndex],
@@ -545,7 +558,8 @@ function addDataToSheet(data) {
       data.Uraian,
       data.Kategori,
       data.Bank,
-      numericValue
+      numericValue,
+      data.Jenis
     ]]);
   } else {
     throw new Error("Tidak ada baris kosong yang tersedia antara baris 2 hingga 999.");
@@ -630,6 +644,7 @@ function testAddToSheet() {
     Tanggal: "17",
     Bulan: "7",
     Tahun: "2026",
+    Jenis: "Expense",
     Transaksi: "Cash",
     Uraian: "TEST beli kopi (hapus baris ini)",
     Kategori: "Makanan",
@@ -650,7 +665,7 @@ function testAddToSheet() {
   Logger.log("OK: Sheet 'Expenses' found. Active spreadsheet: " + ss.getName());
 
   Logger.log("\n--- BEFORE (rows 1-5) ---");
-  var before = sheet.getRange("A1:H5").getValues();
+  var before = sheet.getRange("A1:I5").getValues();
   for (var i = 0; i < before.length; i++) {
     Logger.log("Row " + (i+1) + ": " + JSON.stringify(before[i]));
   }
@@ -664,7 +679,7 @@ function testAddToSheet() {
   }
 
   Logger.log("\n--- AFTER (searching for TEST in rows 2-20) ---");
-  var after = sheet.getRange("A2:H20").getValues();
+  var after = sheet.getRange("A2:I20").getValues();
   var found = false;
   for (var i = 0; i < after.length; i++) {
     var rowStr = JSON.stringify(after[i]);
