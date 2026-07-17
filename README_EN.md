@@ -97,6 +97,8 @@ Open the [template sheet](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2GDH
 
 In your copied spreadsheet, click **Extensions > Apps Script**.
 
+Ensure the `Expenses` tab has a column-I header named `Jenis`, then add dropdown data validation to that column with `Income`, `Expense`, and `Transfer`. Older template copies need this manual update before the bot can write new transactions.
+
 ### 6. Add the code
 
 - Replace the default `Code.gs` content with `Kode.gs` from this repo.
@@ -147,7 +149,7 @@ var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 ```
 
-These must match the data validation (dropdowns) in your Google Sheet columns D, F, and G. If they don't match, the sheet rejects the write.
+These must match the data validation (dropdowns) in your Google Sheet columns D, F, and G. Also add column-I data validation for `Income`, `Expense`, and `Transfer`. If values do not match, the sheet rejects the write.
 
 ---
 
@@ -163,6 +165,7 @@ These must match the data validation (dropdowns) in your Google Sheet columns D,
 | F | Kategori | dropdown |
 | G | Bank | dropdown |
 | H | Nilai | number |
+| I | Jenis | Income / Expense / Transfer |
 
 ---
 
@@ -189,6 +192,12 @@ Common issues:
 ## Manual input
 
 If AI is unavailable, you can still add entries with the semicolon format:
+
+```
+/tambahdata Expense;Transfer;makan;Makanan;JAGO;25000
+```
+
+The legacy format remains supported and automatically uses `Expense` as the type:
 
 ```
 /tambahdata Transfer;makan;Makanan;JAGO;25000

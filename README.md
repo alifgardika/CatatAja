@@ -95,6 +95,8 @@ Buka [spreadsheet template](https://docs.google.com/spreadsheets/d/1LZJjOE-YZL2G
 
 Di spreadsheet yang sudah disalin, klik **Extensions > Apps Script**.
 
+Pastikan tab `Expenses` memiliki header kolom I bernama `Jenis`, lalu tambahkan data validation dropdown untuk `Income`, `Expense`, dan `Transfer` pada kolom tersebut. Template lama perlu diperbarui secara manual sebelum bot dapat menulis transaksi baru.
+
 ### 6. Masukkan kode
 
 - Ganti isi `Code.gs` default dengan isi `Kode.gs` dari repository ini.
@@ -145,7 +147,7 @@ var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 ```
 
-**Penting:** Nilai-nilai ini harus cocok dengan data validation (dropdown) di Google Sheets pada kolom D, F, dan G. Jika tidak cocok, sheet akan menolak penulisan data.
+**Penting:** Nilai-nilai ini harus cocok dengan data validation (dropdown) di Google Sheets pada kolom D, F, dan G. Tambahkan juga data validation pada kolom I untuk `Income`, `Expense`, dan `Transfer`. Jika tidak cocok, sheet akan menolak penulisan data.
 
 ---
 
@@ -161,6 +163,7 @@ var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"
 | F | Kategori | dropdown |
 | G | Bank | dropdown |
 | H | Nilai | angka |
+| I | Jenis | Income / Expense / Transfer |
 
 ---
 
@@ -187,6 +190,12 @@ Jalankan function berikut dari editor Apps Script untuk mendiagnosis masalah:
 ## Input manual
 
 Jika AI tidak tersedia, Anda tetap dapat menambah data dengan format semicolon:
+
+```
+/tambahdata Expense;Transfer;makan;Makanan;JAGO;25000
+```
+
+Format lama tetap didukung dan otomatis menggunakan `Expense` sebagai Jenis:
 
 ```
 /tambahdata Transfer;makan;Makanan;JAGO;25000
