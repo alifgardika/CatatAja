@@ -71,6 +71,30 @@ Tips:
 
 Catatan: Telegram membatasi unduhan file bot hingga 20 MB. Struk/screenshot biasanya jauh di bawah itu.
 
+## Apple Shortcut: foto langsung ke sheet
+
+Jangan gunakan endpoint Telegram `sendPhoto`: foto yang dikirim bot tidak masuk kembali ke webhook bot, jadi tidak akan tercatat ke sheet. Gunakan endpoint Apps Script ini agar foto diproses langsung oleh alur Gemini Vision yang sama.
+
+1. Tambahkan file `shortcut.gs` dari repo ini ke project Apps Script yang sama dengan `Kode.gs`.
+2. Di `shortcut.gs`, ganti `SHORTCUT_TOKEN` dengan teks acak panjang. Jangan pakai bot token di Shortcut.
+3. Di Apple Shortcuts, buat alur: **Take Photo** (atau **Select Photos**) -> **Base64 Encode** -> **Get Contents of URL**.
+4. Konfigurasi **Get Contents of URL**:
+   - URL: Web App URL Apps Script kamu
+   - Method: `POST`
+   - Request Body: `JSON`
+   - Dictionary:
+
+```json
+{
+  "chat_id": 123456789,
+  "shortcut_token": "SHORTCUT_TOKEN_kamu",
+  "image_base64": "hasil Base64 Encode",
+  "mime_type": "image/jpeg"
+}
+```
+
+Gunakan `image/png` jika Shortcut mengirim PNG. Bot akan mengirim konfirmasi ke Telegram setelah transaksi masuk ke sheet.
+
 Metode default adalah Transfer, bank default JAGO. Sebut "tunai" atau "cash" untuk Cash. Sebut nama bank untuk ganti dari JAGO.
 
 Bot mengerti singkatan nominal: `rb`/`ribu`/`k` = ribu, `jt`/`juta` = juta. Juga mengerti tanggal relatif: `kemarin`, `2 hari lalu`, `tgl 13`, `minggu lalu`.

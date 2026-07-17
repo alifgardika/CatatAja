@@ -69,6 +69,30 @@ Tips:
 
 Note: Telegram limits bot file downloads to 20 MB. Receipts/screenshots are usually well under that.
 
+## Apple Shortcut: photo straight to the sheet
+
+Do not use Telegram's `sendPhoto` endpoint: a photo sent by a bot does not return to that bot's webhook, so it cannot be recorded. Use this Apps Script endpoint to process the photo through the same Gemini Vision workflow instead.
+
+1. Add `shortcut.gs` from this repository to the same Apps Script project as `Kode.gs`.
+2. In `shortcut.gs`, replace `SHORTCUT_TOKEN` with a long random string. Do not put the bot token in the Shortcut.
+3. In Apple Shortcuts, create: **Take Photo** (or **Select Photos**) -> **Base64 Encode** -> **Get Contents of URL**.
+4. Configure **Get Contents of URL**:
+   - URL: your Apps Script Web App URL
+   - Method: `POST`
+   - Request Body: `JSON`
+   - Dictionary:
+
+```json
+{
+  "chat_id": 123456789,
+  "shortcut_token": "your_SHORTCUT_TOKEN",
+  "image_base64": "Base64 Encode output",
+  "mime_type": "image/jpeg"
+}
+```
+
+Use `image/png` if the Shortcut sends PNG. The bot sends a Telegram confirmation after the transaction reaches the sheet.
+
 Default method is Transfer, default bank is JAGO. Say "tunai" or "cash" to switch to Cash. Name a bank to override JAGO.
 
 The bot understands amount shorthand: `rb`/`ribu`/`k` = thousand, `jt`/`juta` = million. It also parses relative dates: `kemarin`, `2 hari lalu`, `tgl 13`, `minggu lalu`.
