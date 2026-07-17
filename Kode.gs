@@ -12,7 +12,6 @@ var JENIS_TRANSAKSI = ["Income", "Expense", "Transfer"];
 var INCOME_KEYWORDS = /\b(terima|dapat|gaji|bayaran|pemasukan|masuk|cair)\b/i;
 
 function normalizeJenis(jenis, sourceText) {
-  if (jenis === "Transfer") return "Transfer";
   if (sourceText && INCOME_KEYWORDS.test(sourceText)) return "Income";
   return JENIS_TRANSAKSI.indexOf(jenis) !== -1 ? jenis : "Expense";
 }
@@ -59,7 +58,8 @@ function handleCallbackQuery(callbackQuery) {
     if (data === "/tambahdata") {
       sendMessage({
         chat_id: chatId,
-        text: "Masukkan data dengan format:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+        text: "Masukkan data dengan format:\n/tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai\n\n" +
+              "Format lama tanpa Jenis tetap didukung dan otomatis menjadi Expense."
       });
     } else if (data === "/format") {
       sendMessage({
@@ -106,7 +106,7 @@ function handleCommands(update) {
               "belanja groceries 120rb BCA kemarin\n\n" +
               "Atau kirim foto struk / bukti bayar / screenshot transfer, bot akan membacanya otomatis.\n\n" +
               "Bot akan mencatat otomatis ke sheet. " +
-              "Pakai /tambahdata untuk format manual.",
+              "Pakai /tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai untuk input manual.",
         reply_markup: {
           inline_keyboard: [
             [{ text: "Tambah Data", callback_data: "/tambahdata" }],
@@ -118,14 +118,21 @@ function handleCommands(update) {
       const dataString = text.split(" ").slice(1).join(" ");
       if (dataString) {
         const dataArray = dataString.split(";");
-        if (dataArray.length === 5) {
-          const [transaksi, uraian, kategori, bank, nilai] = dataArray;
+        if (dataArray.length === 5 || dataArray.length === 6) {
+          let jenis, transaksi, uraian, kategori, bank, nilai;
+          if (dataArray.length === 6) {
+            [jenis, transaksi, uraian, kategori, bank, nilai] = dataArray;
+          } else {
+            [transaksi, uraian, kategori, bank, nilai] = dataArray;
+            jenis = "Expense";
+          }
           const now = new Date();
           const tanggal = now.getDate().toString().padStart(2, '0');
           const bulan = (now.getMonth() + 1).toString().padStart(2, '0');
           const data = {
             Tanggal: tanggal,
             Bulan: bulan,
+            Jenis: normalizeJenis(jenis, uraian),
             Transaksi: transaksi,
             Uraian: uraian,
             Kategori: kategori,
@@ -148,13 +155,13 @@ function handleCommands(update) {
         } else {
           sendMessage({
             chat_id: chatId,
-            text: "Format data salah. Gunakan: /tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+            text: "Format data salah. Gunakan: /tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai"
           });
         }
       } else {
-        sendMessage({
-          chat_id: chatId,
-          text: "Masukkan data setelah perintah. Contoh: /tambahdata Transfer;makan;Makanan;JAGO;25000"
+          sendMessage({
+            chat_id: chatId,
+            text: "Masukkan data setelah perintah. Contoh: /tambahdata Expense;Transfer;makan;Makanan;JAGO;25000"
         });
       }
     } else if (!text.startsWith("/")) {
@@ -181,7 +188,7 @@ function handleNaturalLanguage(chatId, text) {
   if (!GEMINI_API_KEY || GEMINI_API_KEY === "change_your_key") {
     sendMessage({
       chat_id: chatId,
-      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai"
     });
     return;
   }
@@ -294,6 +301,7 @@ function recordTransaction(chatId, msgId, parsed, invalidMsg, sourceText) {
   var tgl = data.Tanggal + " " + monthNames[parseInt(data.Bulan) - 1] + " " + data.Tahun;
   editOrSend(chatId, msgId, "✅ Tercatat!\n\n" +
         "📌 " + data.Transaksi + "\n" +
+        "🏷 Jenis: " + data.Jenis + "\n" +
         "📝 " + data.Uraian + "\n" +
         "🏷 " + data.Kategori + " • " + data.Bank + "\n" +
         "💰 Rp " + nilai.toLocaleString("id-ID") + "\n" +
@@ -308,7 +316,7 @@ function handleImageTransaction(chatId, fileId, caption) {
   if (!GEMINI_API_KEY || GEMINI_API_KEY === "change_your_key") {
     sendMessage({
       chat_id: chatId,
-      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Jenis;Transaksi;Uraian;Kategori;Bank;Nilai"
     });
     return;
   }

@@ -15,7 +15,11 @@ function handleShortcutPost(e) {
     }
   } else if (e.parameter && e.parameter.photo) {
     // Apple Shortcuts supplies form fields through e.parameter.
-    request = { chat_id: e.parameter.chat_id, photo: e.parameter.photo };
+    request = {
+      chat_id: e.parameter.chat_id,
+      photo: e.parameter.photo,
+      caption: e.parameter.caption
+    };
   } else {
     return null;
   }
@@ -74,7 +78,8 @@ function handleShortcutImageTransaction(image) {
       image.chatId,
       msgId,
       result.data,
-      "Gagal membaca transaksi dari gambar. Coba ulangi dengan gambar yang lebih jelas."
+      "Gagal membaca transaksi dari gambar. Coba ulangi dengan gambar yang lebih jelas.",
+      image.caption
     );
   } catch (error) {
     console.error("Shortcut image parser error:", error);

@@ -54,10 +54,63 @@ test("retains an explicit valid Transfer type", () => {
   assert.equal(context.normalizeJenis("Transfer", "pindah saldo antar rekening sendiri"), "Transfer");
 });
 
-test("retains an explicit Transfer type when the text mentions gaji masuk", () => {
+test("income keywords override an explicit Transfer type", () => {
   const { context } = loadScript();
 
-  assert.equal(context.normalizeJenis("Transfer", "gaji masuk ke rekening sendiri"), "Transfer");
+  assert.equal(context.normalizeJenis("Transfer", "gaji masuk ke rekening sendiri"), "Income");
+});
+
+function submitManualTransaction(command) {
+  const { context } = loadScript();
+  const rows = [];
+  context.USERS = [123456789];
+  context.addDataToSheet = (data) => rows.push(JSON.parse(JSON.stringify(data)));
+  context.sendMessage = () => {};
+
+  context.handleCommands({
+    message: {
+      chat: { id: 123456789, first_name: "Test" },
+      text: command
+    }
+  });
+
+  return rows[0];
+}
+
+test("manual input keeps legacy five fields and defaults Jenis to Expense", () => {
+  const data = submitManualTransaction("/tambahdata Cash;kopi;Makanan;CASH;25000");
+
+  assert.equal(data.Jenis, "Expense");
+  assert.equal(data.Transaksi, "Cash");
+  assert.equal(data.Nilai, "25000");
+});
+
+test("manual input accepts six fields with Jenis first", () => {
+  const data = submitManualTransaction("/tambahdata Income;Transfer;gaji;Tabungan;JAGO;5000000");
+
+  assert.equal(data.Jenis, "Income");
+  assert.equal(data.Transaksi, "Transfer");
+  assert.equal(data.Uraian, "gaji");
+});
+
+test("confirmation displays Jenis separately", () => {
+  const { context } = loadScript();
+  const messages = [];
+  context.Utilities = { formatDate: () => "2026-07-17" };
+  context.addDataToSheet = () => {};
+  context.editOrSend = (chatId, msgId, text) => messages.push(text);
+
+  context.recordTransaction(123456789, 1, {
+    jenis: "Income",
+    transaksi: "Transfer",
+    uraian: "gaji",
+    kategori: "Tabungan",
+    bank: "JAGO",
+    nilai: "5000000",
+    date: "2026-07-17"
+  }, undefined, "gaji masuk");
+
+  assert.match(messages[0], /Jenis: Income/);
 });
 
 test("writes Jenis to column I", () => {
