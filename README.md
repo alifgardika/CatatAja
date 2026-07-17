@@ -205,7 +205,7 @@ Foto yang dikirim melalui bot tidak masuk kembali ke webhook, sehingga tidak aka
 
 Kami menyediakan template Shortcut siap pakai. Berikut cara menggunakannya:
 
-1. **Buka template** dari link berikut di perangkat Apple Anda: [Shortcut template](https://www.icloud.com/shortcuts/272bc5b9012b42288f2b57b848ddc5ba)
+1. **Buka template** dari link berikut di perangkat Apple Anda: [Shortcut template]([https://www.icloud.com/shortcuts/272bc5b9012b42288f2b57b848ddc5ba](https://www.icloud.com/shortcuts/f1b2f46f5aa9422dabbdaae284da8fcb))
 
 2. **Tap "Add Shortcut"** untuk menambahkan ke library Anda
 
@@ -229,19 +229,17 @@ Jika ingin membuat Shortcut dari nol, tambahkan file `shortcut.gs` ke project Ap
 **STEP 2: Enkripsi Base64**
 - Cari **Base64 Encode** → Add
 
-**STEP 3: Buat Dictionary**
-- Cari **Dictionary** → Add
-- Field 1: `chat_id` = `CHAT_ID_ANDA`
-- Field 2: `photo` = hasil **Base64 Encode**
 
-**STEP 4: Kirim ke API**
+**STEP 3: Kirim ke API**
 - Cari **Get Contents of URL** → Add
 - URL: `WEB_APP_URL_ANDA`
 - Method: `POST`
 - Headers: `Content-Type: application/json`
-- Body: Dictionary dari step 3
-
-**STEP 5: Tampilkan Hasil**
+- Body: 
+- Field 1: `chat_id` = `CHAT_ID_ANDA`
+- Field 2: `photo` = hasil **Base64 Encode**
+  
+**STEP 4: Tampilkan Hasil**
 - Cari **Show Result** → Add
 
 ### Pengaturan & tips
