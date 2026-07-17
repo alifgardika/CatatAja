@@ -12,6 +12,7 @@ var JENIS_TRANSAKSI = ["Income", "Expense", "Transfer"];
 var INCOME_KEYWORDS = /\b(terima|dapat|gaji|bayaran|pemasukan|masuk|cair)\b/i;
 
 function normalizeJenis(jenis, sourceText) {
+  if (jenis === "Transfer") return "Transfer";
   if (sourceText && INCOME_KEYWORDS.test(sourceText)) return "Income";
   return JENIS_TRANSAKSI.indexOf(jenis) !== -1 ? jenis : "Expense";
 }

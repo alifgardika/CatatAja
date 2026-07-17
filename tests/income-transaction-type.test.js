@@ -54,6 +54,12 @@ test("retains an explicit valid Transfer type", () => {
   assert.equal(context.normalizeJenis("Transfer", "pindah saldo antar rekening sendiri"), "Transfer");
 });
 
+test("retains an explicit Transfer type when the text mentions gaji masuk", () => {
+  const { context } = loadScript();
+
+  assert.equal(context.normalizeJenis("Transfer", "gaji masuk ke rekening sendiri"), "Transfer");
+});
+
 test("writes Jenis to column I", () => {
   const { context, writes } = loadScript();
 
