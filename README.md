@@ -10,7 +10,7 @@ Baca dalam bahasa lain: **[English (README_EN.md)](README_EN.md)**
 
 ## Cara kerja
 
-Kamu kirim pesan biasa:
+Kamu kirim pesan biasa, atau foto struk/bukti bayar:
 
 ```
 beli kopi 25k
@@ -19,18 +19,28 @@ beli kopi 25k
 Bot membalas (pesan yang sama di-edit, tanpa spam pesan baru):
 
 ```
-Tercatat!
+✅ Tercatat!
 
-Transfer
-beli kopi
-Makanan - JAGO
-Rp 25.000
-17 Juli 2026
+📌 Transfer
+📝 beli kopi
+🏷 Makanan • JAGO
+💰 Rp 25.000
+📅 17 Juli 2026
 ```
 
 Baris tersebut masuk ke tab "Expenses" di Google Sheets kamu.
 
+![Penggunaan bot di Telegram](img/3.jpg)
+
 ---
+
+## Tampilan
+
+Dashboard dan sheet di Google Sheets:
+
+![Dashboard Sheets](img/1.jpg)
+
+![Sheet income](img/2.jpg)
 
 ## Contoh
 
@@ -41,6 +51,23 @@ Baris tersebut masuk ke tab "Expenses" di Google Sheets kamu.
 | `makan siang 15k tunai` | Cash | CASH | Makanan | 15.000 |
 | `jual server 150k` | Transfer | JAGO | server | 150.000 |
 | `beli groceries 120rb BCA kemarin` | Transfer | BCA | Belanja | 120.000 |
+
+## Kirim gambar / struk
+
+Selain mengetik, kamu bisa **mengirim foto** struk, invoice, bukti transfer, atau screenshot pembayaran e-wallet/QRIS. Bot membaca gambar pakai Gemini Vision lalu mencatat otomatis seperti pesan teks.
+
+| Kamu kirim | Hasil |
+|------------|-------|
+| Foto struk kopi Rp25.000 | Transfer • Makanan • JAGO • 25.000 |
+| Screenshot transfer BCA Rp120.000 | Transfer • Belanja • BCA • 120.000 |
+| Foto + caption `tunai` | Cash • CASH • (kategori sesuai gambar) |
+
+Tips:
+- Tambah **caption** opsional untuk memperjelas, mis. foto struk + caption `makan siang`.
+- Gambar dikirim sebagai foto maupun sebagai file/document sama-sama didukung (asalkan tipe image).
+- Jika gambar tak terbaca, bot akan minta kamu ketik manual.
+
+Catatan: Telegram membatasi unduhan file bot hingga 20 MB. Struk/screenshot biasanya jauh di bawah itu.
 
 Metode default adalah Transfer, bank default JAGO. Sebut "tunai" atau "cash" untuk Cash. Sebut nama bank untuk ganti dari JAGO.
 

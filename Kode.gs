@@ -71,6 +71,19 @@ function handleCommands(update) {
   let text = update.message.text || '';
 
   if (USERS.includes(chatId)) {
+    // Foto / gambar -> parsing struk/bukti bayar via AI vision
+    if (update.message.photo) {
+      var photo = update.message.photo[update.message.photo.length - 1];
+      handleImageTransaction(chatId, photo.file_id, update.message.caption || "");
+      return;
+    }
+    // Gambar dikirim sebagai file/document (screenshot, struk PDF-as-image, dll)
+    if (update.message.document && update.message.document.mimeType
+        && update.message.document.mimeType.indexOf("image/") === 0) {
+      handleImageTransaction(chatId, update.message.document.file_id, update.message.caption || "");
+      return;
+    }
+
     if (text.startsWith("/start")) {
       sendMessage({
         chat_id: chatId,
@@ -78,6 +91,7 @@ function handleCommands(update) {
               "beli kopi 25k\n" +
               "gaji masuk 5jt JAGO\n" +
               "belanja groceries 120rb BCA kemarin\n\n" +
+              "Atau kirim foto struk / bukti bayar / screenshot transfer, bot akan membacanya otomatis.\n\n" +
               "Bot akan mencatat otomatis ke sheet. " +
               "Pakai /tambahdata untuk format manual.",
         reply_markup: {
@@ -173,36 +187,7 @@ function handleNaturalLanguage(chatId, text) {
       editOrSend(chatId, msgId, parsed.response || "Bukan transaksi. Contoh: makan siang 25rb");
       return;
     }
-
-    var nilai = parseFloat(parsed.nilai);
-    if (!parsed.transaksi || isNaN(nilai)) {
-      editOrSend(chatId, msgId, "Gagal memahami transaksi. Coba: bayar makan di warteg 15rb");
-      return;
-    }
-
-    var dateIso = parsed.date || Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
-    var d = new Date(dateIso + "T00:00:00");
-    var data = {
-      Tanggal: String(d.getDate()).padStart(2, "0"),
-      Bulan: String(d.getMonth() + 1).padStart(2, "0"),
-      Tahun: String(d.getFullYear()),
-      Transaksi: parsed.transaksi,
-      Uraian: parsed.uraian || "",
-      Kategori: parsed.kategori || "",
-      Bank: parsed.bank || "JAGO",
-      Nilai: String(nilai)
-    };
-
-    addDataToSheet(data);
-
-    var monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-    var tgl = data.Tanggal + " " + monthNames[parseInt(data.Bulan) - 1] + " " + data.Tahun;
-    editOrSend(chatId, msgId, "Tercatat!\n\n" +
-          data.Transaksi + "\n" +
-          data.Uraian + "\n" +
-          data.Kategori + " - " + data.Bank + "\n" +
-          "Rp " + nilai.toLocaleString("id-ID") + "\n" +
-          tgl);
+    recordTransaction(chatId, msgId, parsed);
   } catch (error) {
     console.error("NL parser error:", error);
     editOrSend(chatId, msgId, "Terjadi error saat mencatat. Coba lagi atau gunakan /tambahdata.");
@@ -223,15 +208,19 @@ function parseTransactionWithAI(message) {
   }
 }
 
-function callGemini(prompt) {
+function callGemini(prompt, extraParts) {
+  var parts = [{ text: prompt }];
+  if (extraParts && extraParts.length) {
+    parts = parts.concat(extraParts);
+  }
   var lastError = null;
   for (var i = 0; i < AI_MODELS.length; i++) {
     var model = AI_MODELS[i];
     try {
       var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + GEMINI_API_KEY;
       var payload = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 800 }
+        contents: [{ parts: parts }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 1000 }
       };
       var options = {
         method: "post",
@@ -257,6 +246,182 @@ function callGemini(prompt) {
   }
   console.error("Gemini error:", lastError && lastError.message);
   return { ok: false, error: lastError ? lastError.message : "unknown error" };
+}
+
+// =============================================
+// SHARED: simpan transaksi terparse ke sheet + balas user
+// Dipakai bersama oleh text parser dan image parser.
+// =============================================
+function recordTransaction(chatId, msgId, parsed, invalidMsg) {
+  invalidMsg = invalidMsg || "Gagal memahami transaksi. Coba: bayar makan di warteg 15rb";
+
+  var nilai = parseFloat(parsed.nilai);
+  if (!parsed.transaksi || isNaN(nilai)) {
+    editOrSend(chatId, msgId, invalidMsg);
+    return false;
+  }
+
+  var dateIso = parsed.date || Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
+  var d = new Date(dateIso + "T00:00:00");
+  var data = {
+    Tanggal: String(d.getDate()).padStart(2, "0"),
+    Bulan: String(d.getMonth() + 1).padStart(2, "0"),
+    Tahun: String(d.getFullYear()),
+    Transaksi: parsed.transaksi,
+    Uraian: parsed.uraian || "",
+    Kategori: parsed.kategori || "",
+    Bank: parsed.bank || "JAGO",
+    Nilai: String(nilai)
+  };
+
+  addDataToSheet(data);
+
+  var monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  var tgl = data.Tanggal + " " + monthNames[parseInt(data.Bulan) - 1] + " " + data.Tahun;
+  editOrSend(chatId, msgId, "✅ Tercatat!\n\n" +
+        "📌 " + data.Transaksi + "\n" +
+        "📝 " + data.Uraian + "\n" +
+        "🏷 " + data.Kategori + " • " + data.Bank + "\n" +
+        "💰 Rp " + nilai.toLocaleString("id-ID") + "\n" +
+        "📅 " + tgl);
+  return true;
+}
+
+// =============================================
+// IMAGE / RECEIPT PARSER (AI Vision)
+// =============================================
+function handleImageTransaction(chatId, fileId, caption) {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "change_your_key") {
+    sendMessage({
+      chat_id: chatId,
+      text: "Fitur AI belum aktif. Isi GEMINI_API_KEY di script.\n\nSementara itu pakai format manual:\n/tambahdata Transaksi;Uraian;Kategori;Bank;Nilai"
+    });
+    return;
+  }
+
+  var sent = sendMessage({ chat_id: chatId, text: "🔍 Membaca gambar/struk..." });
+  var msgId = sent && sent.result && sent.result.message_id;
+
+  try {
+    var fileData = downloadTelegramFile(fileId);
+    if (!fileData.ok) {
+      editOrSend(chatId, msgId, "Gagal mengunduh gambar. Coba kirim ulang.\n\n" + fileData.error);
+      return;
+    }
+
+    var result = parseImageWithAI(fileData.base64, fileData.mimeType, caption);
+    if (!result.ok) {
+      editOrSend(chatId, msgId, "AI gagal membaca gambar.\n\nSebab: " + result.error + "\n\nCoba ketik manual: beli kopi 25k");
+      return;
+    }
+
+    var parsed = result.data;
+    if (!parsed.isTransaction) {
+      editOrSend(chatId, msgId, parsed.response || "Tidak terdeteksi transaksi pada gambar. Coba ketik manual: beli kopi 25k");
+      return;
+    }
+
+    recordTransaction(
+      chatId,
+      msgId,
+      parsed,
+      "Gagal membaca transaksi dari gambar. Coba ulangi dengan caption seperti 'beli kopi 25k'."
+    );
+  } catch (error) {
+    console.error("Image parser error:", error);
+    editOrSend(chatId, msgId, "Terjadi error saat membaca gambar. Coba lagi atau ketik manual.");
+  }
+}
+
+function downloadTelegramFile(fileId) {
+  try {
+    var fileRes = UrlFetchApp.fetch(
+      "https://api.telegram.org/bot" + BOT_TOKEN + "/getFile?file_id=" + fileId,
+      { muteHttpExceptions: true }
+    );
+    var fileJson = JSON.parse(fileRes.getContentText());
+    if (!fileJson.ok || !fileJson.result || !fileJson.result.file_path) {
+      return { ok: false, error: "getFile gagal" };
+    }
+    var filePath = fileJson.result.file_path;
+
+    var dlRes = UrlFetchApp.fetch(
+      "https://api.telegram.org/file/bot" + BOT_TOKEN + "/" + filePath,
+      { muteHttpExceptions: true }
+    );
+    if (dlRes.getResponseCode() !== 200) {
+      return { ok: false, error: "download HTTP " + dlRes.getResponseCode() };
+    }
+    var blob = dlRes.getBlob();
+    var mimeType = blob.getContentType() || "image/jpeg";
+    if (mimeType.indexOf("image/") !== 0) {
+      mimeType = "image/jpeg";
+    }
+    var base64 = Utilities.base64Encode(blob.getBytes());
+    return { ok: true, base64: base64, mimeType: mimeType };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function parseImageWithAI(imageBase64, mimeType, caption) {
+  var prompt = buildImagePrompt(caption);
+  var ai = callGemini(prompt, [{ inline_data: { mime_type: mimeType, data: imageBase64 } }]);
+  if (!ai.ok) return { ok: false, error: ai.error };
+  var text = ai.text;
+  var jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return { ok: true, data: { isTransaction: false, response: text } };
+  try {
+    return { ok: true, data: JSON.parse(jsonMatch[0]) };
+  } catch (e) {
+    return { ok: false, error: "AI merespon bukan JSON: " + text.slice(0, 150) };
+  }
+}
+
+function buildImagePrompt(caption) {
+  var now = new Date();
+  var isoToday = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
+  var todayStr = Utilities.formatDate(now, "Asia/Jakarta", "EEEE, d MMMM yyyy");
+
+  var prompt = SECURITY_RULES + "\n\n" +
+"You are a financial transaction parser for an Indonesian personal expense tracker bot.\n" +
+"The user sent an image (receipt, invoice, payment screenshot, or banking/e-wallet transfer confirmation). Read the image and extract the transaction.\n\n" +
+"Current date: " + todayStr + " (" + isoToday + ")\n";
+
+  if (caption && caption.trim()) {
+    prompt += "User caption (optional extra context, trust it if the image is unclear): \"" + caption + "\"\n";
+  }
+
+  prompt += "\nAvailable data:\n" +
+"- Banks/Wallets: " + BANKS.join(", ") + "\n" +
+"- Categories: " + KATEGORI.join(", ") + "\n\n" +
+"Task: Read the image. Decide if it contains a financial transaction (amount, item, or payment).\n\n" +
+"If YES, return ONLY this JSON (no markdown):\n" +
+"{\n" +
+"  \"isTransaction\": true,\n" +
+"  \"transaksi\": \"Transfer\" | \"Cash\",\n" +
+"  \"kategori\": \"<pick from categories above>\",\n" +
+"  \"bank\": \"<pick from banks above; default JAGO jika tidak terlihat>\",\n" +
+"  \"nilai\": <number in IDR, no formatting>,\n" +
+"  \"uraian\": \"<short description in Bahasa Indonesia based on image content, e.g. merchant name>\",\n" +
+"  \"date\": \"<YYYY-MM-DD; use date visible in image if present, else " + isoToday + ">\"\n" +
+"}\n\n" +
+"If NOT a transaction (image unclear, not finance related, unreadable), return ONLY:\n" +
+"{\n" +
+"  \"isTransaction\": false,\n" +
+"  \"response\": \"<jawaban singkat dalam Bahasa Indonesia>\"\n" +
+"}\n\n" +
+"VISION RULES:\n" +
+"- Extract the TOTAL amount paid (nilai). For receipts use the grand total; for transfer screenshots use the transferred amount.\n" +
+"- Normalize amount: \"Rp25.000\" / \"25.000\" / \"25,000\" / \"25000\" -> nilai: 25000 (plain number, no dots/commas/currency).\n" +
+"- transaksi (payment method): \"Transfer\" if it's a bank transfer / e-wallet / QRIS / payment app screenshot. \"Cash\" only if it's a physical cash receipt clearly marked tunai.\n" +
+"- bank: detect from logo/text in image (e.g. JAGO, BCA). If e-wallet/QRIS and unclear, default JAGO.\n" +
+"- kategori: infer from merchant or items (e.g. restaurant/kopi -> Makanan, store -> Belanja, tagihan listrik -> Cicilan).\n" +
+"- uraian: short, e.g. merchant name or item summary in Bahasa Indonesia.\n" +
+"- date: use the date visible in the image if present (format YYYY-MM-DD), else today.\n\n" +
+"Return ONLY valid JSON, no markdown, no explanation.";
+
+  return prompt;
 }
 
 function buildParsePrompt(message) {
