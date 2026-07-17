@@ -5,7 +5,7 @@ var USERS = [123456789]; // Ganti dengan CHAT ID Anda (cek via @userinfobot)
 // AI CONFIG - Natural Language Parser (Gemini)
 // Dapatkan API key gratis di https://aistudio.google.com/apikey
 var GEMINI_API_KEY = "change_your_key"; // ISI dengan API key Gemini kamu
-var AI_MODELS = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+var AI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
 var BANKS = ["JAGO", "BCA", "CASH"];
 var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"];
 var JENIS_TRANSAKSI = ["Income", "Expense", "Transfer"];
