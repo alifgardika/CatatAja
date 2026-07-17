@@ -3,13 +3,21 @@
 var SHORTCUT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 function handleShortcutPost(e) {
-  if (!e || !e.postData || e.postData.type !== "application/json") return null;
+  if (!e || !e.postData) return null;
 
   var request;
-  try {
-    request = JSON.parse(e.postData.contents);
-  } catch (error) {
-    return shortcutJsonResponse({ ok: false, error: "JSON tidak valid." });
+  var contentType = String(e.postData.type || "").toLowerCase();
+  if (contentType.indexOf("application/json") === 0) {
+    try {
+      request = JSON.parse(e.postData.contents);
+    } catch (error) {
+      return shortcutJsonResponse({ ok: false, error: "JSON tidak valid." });
+    }
+  } else if (e.parameter && e.parameter.photo) {
+    // Apple Shortcuts supplies form fields through e.parameter.
+    request = { chat_id: e.parameter.chat_id, photo: e.parameter.photo };
+  } else {
+    return null;
   }
 
   // Telegram updates do not contain photo, so Kode.gs handles them.

@@ -4,7 +4,17 @@ const test = require("node:test");
 const vm = require("node:vm");
 
 function loadScript() {
-  const context = {};
+  const context = {
+    ContentService: {
+      MimeType: { JSON: "application/json" },
+      createTextOutput(payload) {
+        return {
+          payload,
+          setMimeType() { return this; }
+        };
+      }
+    }
+  };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync("Kode.gs", "utf8"), context);
   vm.runInContext(fs.readFileSync("shortcut.gs", "utf8"), context);
@@ -55,4 +65,16 @@ test("does not throw when Apps Script runs doPost without an HTTP event", () => 
   const script = loadScript();
 
   assert.doesNotThrow(() => script.doPost({}));
+});
+
+test("accepts Base64 photo data from an Apple Shortcut form body", () => {
+  const script = loadScript();
+  script.handleShortcutImageTransaction = () => {};
+
+  const response = script.handleShortcutPost({
+    postData: { type: "application/x-www-form-urlencoded" },
+    parameter: { chat_id: "123456789", photo: "aGVsbG8=" }
+  });
+
+  assert.equal(response.payload, '{"ok":true,"message":"Gambar sedang diproses."}');
 });

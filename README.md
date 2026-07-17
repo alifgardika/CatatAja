@@ -80,7 +80,7 @@ Jangan gunakan endpoint Telegram `sendPhoto`: foto yang dikirim bot tidak masuk 
 3. Konfigurasi **Get Contents of URL**:
    - URL: Web App URL Apps Script kamu
    - Method: `POST`
-   - Request Body: `JSON`
+   - Request Body: `Form`
    - Dictionary:
 
 ```json
