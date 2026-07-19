@@ -172,7 +172,7 @@ These must match the data validation (dropdowns) in your Google Sheet columns D,
 
 ### Income summary
 
-AI transactions with type `Income` are written to a separate tab named **`Income`**, never to `Expenses`. Create that tab with Indonesian month headers (for example, `Juli`) on any header row, source labels in column A (such as `Gaji` or `Freelance`), and one `Total` row in column A. `masuk gaji 5jt` adds to the `Gaji` row for the transaction month. A new source such as `duit masuk jual server 150k` creates a `Jual server` row immediately before `Total`. Values for the same source and month always accumulate. An incomplete configuration is rejected without writing to `Expenses`.
+AI transactions with type `Income` are written to a separate tab named **`Income`**, never to `Expenses`. Create that tab with Indonesian month headers (for example, `Juli`) on any header row, source labels in column A (such as `Gaji` or `Freelance`), and one `Total` row in column A. `masuk gaji 5jt` adds to the `Gaji` row for the transaction month. `duit masuk dari project beam 300k` is recorded under the `Beam` source; a later transaction for the same source and month is added to the existing value. A new source uses an empty row before `Total`, or creates a row immediately before `Total` when all source rows are filled. An incomplete configuration is rejected without writing to `Expenses`.
 
 ---
 

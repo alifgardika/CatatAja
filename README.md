@@ -170,7 +170,7 @@ var KATEGORI = ["Belanja", "Cicilan", "Makanan", "Tabungan", "Hiburan", "server"
 
 ### Ringkasan Income
 
-Transaksi AI bertipe `Income` dicatat ke tab terpisah bernama **`Income`**, bukan ke `Expenses`. Buat tab ini dengan nama tersebut, tulis header bulan bahasa Indonesia (misalnya `Juli`) pada baris header mana pun, label sumber di kolom A (misalnya `Gaji` atau `Freelance`), dan satu baris `Total` di kolom A. `masuk gaji 5jt` menambah nilai ke baris `Gaji` pada kolom bulan transaksi. Sumber baru seperti `duit masuk jual server 150k` membuat baris `Jual server` tepat sebelum `Total`. Nilai untuk sumber dan bulan yang sama selalu dijumlahkan. Konfigurasi yang tidak lengkap akan ditolak tanpa menulis ke `Expenses`.
+Transaksi AI bertipe `Income` dicatat ke tab terpisah bernama **`Income`**, bukan ke `Expenses`. Buat tab ini dengan nama tersebut, tulis header bulan bahasa Indonesia (misalnya `Juli`) pada baris header mana pun, label sumber di kolom A (misalnya `Gaji` atau `Freelance`), dan satu baris `Total` di kolom A. `masuk gaji 5jt` menambah nilai ke baris `Gaji` pada kolom bulan transaksi. `duit masuk dari project beam 300k` dicatat sebagai sumber `Beam`; transaksi berikutnya untuk sumber dan bulan yang sama ditambahkan ke nilai yang sudah ada. Sumber baru memakai baris kosong sebelum `Total`, atau membuat baris tepat sebelum `Total` bila semua baris sudah terisi. Konfigurasi yang tidak lengkap akan ditolak tanpa menulis ke `Expenses`.
 
 ---
 
