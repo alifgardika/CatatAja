@@ -588,6 +588,18 @@ function addDataToSheet(data) {
 }
 
 function addIncomeToSheet(data) {
+  if (!data) {
+    throw new Error("Data pemasukan tidak tersedia. Fungsi addIncomeToSheet harus menerima parameter data.");
+  }
+
+  if (!data.Bulan) {
+    throw new Error("Field 'Bulan' tidak tersedia.");
+  }
+
+  if (data.Nilai === undefined || data.Nilai === null || data.Nilai === "") {
+    throw new Error("Field 'Nilai' tidak tersedia.");
+  }
+
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Income");
   if (!sheet) {
     throw new Error("Konfigurasi Income: sheet 'Income' tidak ditemukan.");
@@ -597,13 +609,22 @@ function addIncomeToSheet(data) {
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
   ];
-  var month = monthNames[parseInt(data.Bulan, 10) - 1];
+  var monthNumber = parseInt(data.Bulan, 10);
+  if (isNaN(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+    throw new Error("Bulan tidak valid: " + data.Bulan);
+  }
+
+  var amount = parseFloat(data.Nilai);
+  if (isNaN(amount)) {
+    throw new Error("Nilai tidak valid: " + data.Nilai);
+  }
+
+  var month = monthNames[monthNumber - 1];
   var table = findIncomeTable(sheet, month);
   var source = normalizeIncomeSource(data);
   var sourceRow = findOrCreateIncomeSourceRow(sheet, table, source);
   var amountRange = sheet.getRange(sourceRow, table.monthColumn);
   var currentAmount = parseFloat(amountRange.getValue());
-  var amount = parseFloat(data.Nilai);
 
   amountRange.setValue((isNaN(currentAmount) ? 0 : currentAmount) + amount);
   return { source: source, month: month };

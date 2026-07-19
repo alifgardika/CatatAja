@@ -330,6 +330,41 @@ test("income requires an Income sheet", () => {
   );
 });
 
+test("income rejects missing input data", () => {
+  const { context } = loadScript({ income: incomeTable() });
+
+  assert.throws(
+    () => context.addIncomeToSheet(),
+    /Data pemasukan tidak tersedia/
+  );
+});
+
+test("income rejects missing month and value", () => {
+  const { context } = loadScript({ income: incomeTable() });
+
+  assert.throws(
+    () => context.addIncomeToSheet({ Nilai: "300000" }),
+    /Field 'Bulan' tidak tersedia/
+  );
+  assert.throws(
+    () => context.addIncomeToSheet({ Bulan: "07" }),
+    /Field 'Nilai' tidak tersedia/
+  );
+});
+
+test("income rejects invalid month and value", () => {
+  const { context } = loadScript({ income: incomeTable() });
+
+  assert.throws(
+    () => context.addIncomeToSheet({ Bulan: "13", Nilai: "300000" }),
+    /Bulan tidak valid: 13/
+  );
+  assert.throws(
+    () => context.addIncomeToSheet({ Bulan: "07", Nilai: "tiga ratus ribu" }),
+    /Nilai tidak valid: tiga ratus ribu/
+  );
+});
+
 test("income requires the target month header", () => {
   const { context } = loadScript({ income: incomeTable({ includeMonth: false }) });
 
