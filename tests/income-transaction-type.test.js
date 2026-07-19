@@ -125,11 +125,20 @@ function loadScript(options = {}) {
   return { context, writes, sheet, incomeSheet };
 }
 
-function incomeTable({ includeSheet = true, includeMonth = true, includeTotal = true, source = "Gaji" } = {}) {
+function incomeTable({
+  includeSheet = true,
+  includeMonth = true,
+  includeTotal = true,
+  source = "Gaji",
+  emptySourceRows = 0,
+  includeLaterTotal = false
+} = {}) {
   if (!includeSheet) return undefined;
-  const headers = ["Sumber", "Januari", "Februari", "Maret", "April", "Mei", "Juni", includeMonth ? "Juli" : "Agustus"];
+  const headers = ["Income", "Januari", "Februari", "Maret", "April", "Mei", "Juni", includeMonth ? "Juli" : "Agustus"];
   const rows = [["Laporan Income"], [], headers, [source, 0, 0, 0, 0, 0, 0, 0]];
+  rows.push(...Array.from({ length: emptySourceRows }, () => Array(8).fill("")));
   if (includeTotal) rows.push(["Total", 0, 0, 0, 0, 0, 0, 0]);
+  if (includeLaterTotal) rows.push(["Alokasi"], ["Total", 0, 0, 0, 0, 0, 0, 0]);
   return { values: rows };
 }
 
@@ -155,6 +164,14 @@ test("income keywords override an explicit Transfer type", () => {
   const { context } = loadScript();
 
   assert.equal(context.normalizeJenis("Transfer", "gaji masuk ke rekening sendiri"), "Income");
+});
+
+test("recognizes pendapatan and extracts a project source", () => {
+  const { context } = loadScript();
+
+  assert.equal(context.normalizeJenis("Expense", "pendapatan dari project beam 300k"), "Income");
+  assert.equal(context.normalizeIncomeSource({ SumberIncome: "duit masuk dari project beam 300k" }), "Beam");
+  assert.equal(context.normalizeIncomeSource({ SumberIncome: "duit masuk gaji 5jt" }), "Gaji");
 });
 
 function submitManualTransaction(command) {
@@ -237,6 +254,50 @@ test("salary income accumulates in a case-insensitive Gaji row for Juli", () => 
   assert.equal(writes.length, 0);
   assert.equal(incomeSheet.values[3][7], 5000000);
   assert.match(messages[0], /Gaji.*Juli/);
+});
+
+test("adds Beam income to its existing July balance", () => {
+  const { context, incomeSheet } = loadScript({ income: incomeTable({ source: "bEaM" }) });
+  incomeSheet.values[3][7] = 200000;
+
+  context.addIncomeToSheet({
+    Bulan: "07",
+    SumberIncome: "duit masuk dari project beam 300k",
+    Nilai: "300000"
+  });
+
+  assert.equal(incomeSheet.insertions.length, 0);
+  assert.equal(incomeSheet.values[3][7], 500000);
+});
+
+test("uses an empty source row before the primary Total", () => {
+  const { context, incomeSheet } = loadScript({ income: incomeTable({ emptySourceRows: 1 }) });
+
+  context.addIncomeToSheet({
+    Bulan: "07",
+    SumberIncome: "pendapatan project beam 300k",
+    Nilai: "300000"
+  });
+
+  assert.equal(incomeSheet.insertions.length, 0);
+  assert.equal(incomeSheet.values[4][0], "Beam");
+  assert.equal(incomeSheet.values[4][7], 300000);
+  assert.equal(incomeSheet.values[5][0], "Total");
+});
+
+test("inserts above the primary Total and ignores a later Total", () => {
+  const { context, incomeSheet } = loadScript({ income: incomeTable({ includeLaterTotal: true }) });
+
+  context.addIncomeToSheet({
+    Bulan: "07",
+    SumberIncome: "duit masuk dari project beam 300k",
+    Nilai: "300000"
+  });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(incomeSheet.insertions)), [{ row: 5, howMany: 1 }]);
+  assert.equal(incomeSheet.values[4][0], "Beam");
+  assert.equal(incomeSheet.values[5][0], "Total");
+  assert.equal(incomeSheet.values[7][0], "Total");
 });
 
 test("income creates a title-cased source row immediately before Total", () => {
