@@ -67,6 +67,33 @@ test("does not throw when Apps Script runs doPost without an HTTP event", () => 
   assert.doesNotThrow(() => script.doPost({}));
 });
 
+test("ignores POSTs missing the configured secret", () => {
+  const script = loadScript();
+  script.WEBHOOK_SECRET = "topsecret";
+  script.handleShortcutPost = () => { throw new Error("should not be reached"); };
+
+  const result = script.doPost({
+    postData: { type: "application/json", contents: "{}" },
+    parameter: {}
+  });
+
+  assert.equal(result, undefined);
+});
+
+test("processes POSTs that include the matching secret", () => {
+  const script = loadScript();
+  script.WEBHOOK_SECRET = "topsecret";
+  let handled = false;
+  script.handleShortcutPost = () => { handled = true; return null; };
+
+  script.doPost({
+    postData: { type: "application/json", contents: "{}" },
+    parameter: { secret: "topsecret" }
+  });
+
+  assert.equal(handled, true);
+});
+
 test("accepts Base64 photo data from an Apple Shortcut form body", () => {
   const script = loadScript();
   let image;

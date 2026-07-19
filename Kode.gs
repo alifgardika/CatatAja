@@ -2,6 +2,12 @@
 var BOT_TOKEN = "change_your_key"; // Ganti dengan TOKEN BOT Anda (dari @BotFather)
 var USERS = [123456789]; // Ganti dengan CHAT ID Anda (cek via @userinfobot)
 
+// Opsional tapi disarankan: isi dengan string acak, lalu tambahkan "?secret=<nilai_ini>"
+// di akhir Web App URL yang didaftarkan ke setWebhook (webhook.gs) dan ke Apple Shortcut.
+// Apps Script doPost tidak bisa membaca header, jadi secret dikirim lewat query string.
+// Kosongkan ("") untuk menonaktifkan pengecekan ini.
+var WEBHOOK_SECRET = "";
+
 // AI CONFIG - Natural Language Parser (Gemini)
 // Dapatkan API key gratis di https://aistudio.google.com/apikey
 var GEMINI_API_KEY = "change_your_key"; // ISI dengan API key Gemini kamu
@@ -16,6 +22,20 @@ var INCOME_AMOUNT = /\brp\.?\s*\d[\d.,]*\s*(?:k|rb|ribu|jt|juta)?\b|\b\d[\d.,]*\
 function normalizeJenis(jenis, sourceText) {
   if (sourceText && INCOME_KEYWORDS.test(sourceText)) return "Income";
   return JENIS_TRANSAKSI.indexOf(jenis) !== -1 ? jenis : "Expense";
+}
+
+// Parses a rupiah amount that may use "." or "," as a thousands separator
+// (e.g. manual /tambahdata input) and/or a k/rb/jt suffix. Plain numbers from
+// the AI parser (e.g. "25000") pass through unchanged. Returns NaN if unparseable.
+function parseNilai(raw) {
+  var str = String(raw).trim().toLowerCase();
+  var match = str.match(/^(\d[\d.,]*)\s*(k|rb|ribu|jt|juta)?$/);
+  if (!match) return NaN;
+  var num = parseFloat(match[1].replace(/[.,]/g, ""));
+  if (isNaN(num)) return NaN;
+  if (match[2] === "k" || match[2] === "rb" || match[2] === "ribu") num *= 1000;
+  else if (match[2] === "jt" || match[2] === "juta") num *= 1000000;
+  return num;
 }
 
 // Security rules untuk AI (anti prompt-injection)
@@ -34,6 +54,7 @@ function doGet(e) {
 
 function doPost(e) {
   if (!e || !e.postData) return;
+  if (WEBHOOK_SECRET && (!e.parameter || e.parameter.secret !== WEBHOOK_SECRET)) return;
 
   var shortcutResponse = handleShortcutPost(e);
   if (shortcutResponse) return shortcutResponse;
@@ -221,7 +242,12 @@ function parseTransactionWithAI(message) {
   var prompt = buildParsePrompt(message);
   var ai = callGemini(prompt);
   if (!ai.ok) return { ok: false, error: ai.error };
-  var text = ai.text;
+  return extractAIJson(ai.text);
+}
+
+// Gemini responses are expected to be a single JSON object, optionally wrapped
+// in prose/markdown. Shared by the text and image parsers.
+function extractAIJson(text) {
   var jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return { ok: true, data: { isTransaction: false, response: text } };
   try {
@@ -278,7 +304,7 @@ function callGemini(prompt, extraParts) {
 function recordTransaction(chatId, msgId, parsed, invalidMsg, sourceText) {
   invalidMsg = invalidMsg || "Gagal memahami transaksi. Coba: bayar makan di warteg 15rb";
 
-  var nilai = parseFloat(parsed.nilai);
+  var nilai = parseNilai(parsed.nilai);
   if (!parsed.transaksi || isNaN(nilai)) {
     editOrSend(chatId, msgId, invalidMsg);
     return false;
@@ -401,14 +427,7 @@ function parseImageWithAI(imageBase64, mimeType, caption) {
   var prompt = buildImagePrompt(caption);
   var ai = callGemini(prompt, [{ inline_data: { mime_type: mimeType, data: imageBase64 } }]);
   if (!ai.ok) return { ok: false, error: ai.error };
-  var text = ai.text;
-  var jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return { ok: true, data: { isTransaction: false, response: text } };
-  try {
-    return { ok: true, data: JSON.parse(jsonMatch[0]) };
-  } catch (e) {
-    return { ok: false, error: "AI merespon bukan JSON: " + text.slice(0, 150) };
-  }
+  return extractAIJson(ai.text);
 }
 
 function buildImagePrompt(caption) {
@@ -554,36 +573,44 @@ function addDataToSheet(data) {
   const monthIndex = parseInt(data.Bulan) - 1;
   const tahun = data.Tahun ? parseInt(data.Tahun) : new Date().getFullYear();
   const formattedDate = `${data.Tanggal} ${monthNames[monthIndex]} ${tahun}`;
-  const numericValue = parseFloat(data.Nilai);
+  const numericValue = parseNilai(data.Nilai);
 
-  prepareJenisColumn(sheet);
+  // Lock: mencegah dua request (misal dua foto struk beruntun) menemukan
+  // baris kosong yang sama secara bersamaan dan saling menimpa.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    prepareJenisColumn(sheet);
 
-  // Cari baris kosong pertama: anggap kosong jika kolom Transaksi (D) kosong
-  const range = sheet.getRange("A2:I999");
-  const values = range.getValues();
+    // Cari baris kosong pertama: anggap kosong jika kolom Transaksi (D) kosong
+    const range = sheet.getRange("A2:I999");
+    const values = range.getValues();
 
-  let emptyRow = null;
-  for (let i = 0; i < values.length; i++) {
-    if (values[i][3] === "" || values[i][3] === null) {
-      emptyRow = i + 2;
-      break;
+    let emptyRow = null;
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][3] === "" || values[i][3] === null) {
+        emptyRow = i + 2;
+        break;
+      }
     }
-  }
 
-  if (emptyRow) {
-    sheet.getRange(emptyRow, 1, 1, 9).setValues([[
-      false,
-      formattedDate,
-      monthNames[monthIndex],
-      data.Transaksi,
-      data.Uraian,
-      data.Kategori,
-      data.Bank,
-      numericValue,
-      data.Jenis
-    ]]);
-  } else {
-    throw new Error("Tidak ada baris kosong yang tersedia antara baris 2 hingga 999.");
+    if (emptyRow) {
+      sheet.getRange(emptyRow, 1, 1, 9).setValues([[
+        false,
+        formattedDate,
+        monthNames[monthIndex],
+        data.Transaksi,
+        data.Uraian,
+        data.Kategori,
+        data.Bank,
+        numericValue,
+        data.Jenis
+      ]]);
+    } else {
+      throw new Error("Tidak ada baris kosong yang tersedia antara baris 2 hingga 999.");
+    }
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -620,14 +647,23 @@ function addIncomeToSheet(data) {
   }
 
   var month = monthNames[monthNumber - 1];
-  var table = findIncomeTable(sheet, month);
-  var source = normalizeIncomeSource(data);
-  var sourceRow = findOrCreateIncomeSourceRow(sheet, table, source);
-  var amountRange = sheet.getRange(sourceRow, table.monthColumn);
-  var currentAmount = parseFloat(amountRange.getValue());
 
-  amountRange.setValue((isNaN(currentAmount) ? 0 : currentAmount) + amount);
-  return { source: source, month: month };
+  // Lock: mencegah dua request income beruntun membaca saldo lama yang sama
+  // dan saling menimpa, atau membuat dua baris sumber duplikat.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var table = findIncomeTable(sheet, month);
+    var source = normalizeIncomeSource(data);
+    var sourceRow = findOrCreateIncomeSourceRow(sheet, table, source);
+    var amountRange = sheet.getRange(sourceRow, table.monthColumn);
+    var currentAmount = parseFloat(amountRange.getValue());
+
+    amountRange.setValue((isNaN(currentAmount) ? 0 : currentAmount) + amount);
+    return { source: source, month: month };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function findIncomeTable(sheet, month) {

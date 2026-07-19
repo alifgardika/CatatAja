@@ -131,6 +131,8 @@ var url = "webapp_url_kamu";
 
 Pilih function `setWebhook` dan klik **Run**. Periksa execution log — harus menampilkan `"ok":true`.
 
+**Opsional (disarankan):** Karena deployment web app diakses "Anyone", siapa pun yang mengetahui URL-nya bisa mengirim POST palsu (walaupun tetap ditolak jika `chat_id` tidak ada di `USERS`). Untuk menutup celah ini, isi `WEBHOOK_SECRET` di `Kode.gs` dengan string acak, lalu tambahkan `?secret=<nilai_WEBHOOK_SECRET>` di akhir `url` pada `webhook.gs` **dan** di URL yang dipakai Apple Shortcut (lihat bagian Apple Shortcut di bawah). Request tanpa secret yang cocok akan diabaikan.
+
 ### 9. Tes
 
 Buka bot Anda di Telegram, kirim `/start`, lalu coba:
@@ -227,7 +229,7 @@ Kami menyediakan template Shortcut siap pakai. Berikut cara menggunakannya:
 
 3. **Edit Shortcut** dan ganti dua parameter:
    - **Chat ID:** Cari field `chat_id` dan ganti nilai `123456789` dengan Chat ID Anda
-   - **Web App URL:** Cari field `url` dan ganti nilai `https://YOUR_API_ENDPOINT` dengan Web App URL Anda (dari step 7 di Setup)
+   - **Web App URL:** Cari field `url` dan ganti nilai `https://YOUR_API_ENDPOINT` dengan Web App URL Anda (dari step 7 di Setup). Jika Anda mengisi `WEBHOOK_SECRET` di `Kode.gs`, tambahkan `?secret=<nilai_WEBHOOK_SECRET>` di akhir URL ini juga.
 
 4. Selesai! Shortcut siap digunakan.
 
@@ -248,7 +250,7 @@ Jika ingin membuat Shortcut dari nol, tambahkan file `shortcut.gs` ke project Ap
 
 **STEP 3: Kirim ke API**
 - Cari **Get Contents of URL** → Add
-- URL: `WEB_APP_URL_ANDA`
+- URL: `WEB_APP_URL_ANDA` (tambahkan `?secret=...` jika `WEBHOOK_SECRET` diisi)
 - Method: `POST`
 - Headers: `Content-Type: application/json`
 - Body: 

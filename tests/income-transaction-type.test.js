@@ -43,6 +43,11 @@ function loadScript(options = {}) {
     };
   }
   const context = {
+    LockService: {
+      getScriptLock() {
+        return { waitLock() {}, releaseLock() {} };
+      }
+    },
     SpreadsheetApp: {
       newDataValidation() {
         return {

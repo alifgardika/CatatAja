@@ -1,6 +1,8 @@
 // CONFIGURATION
 var token = "change_your_key"; // Your Telegram bot token (dari @BotFather)
-var url = "change_your_webapp_url"; // Your Google Apps Script Web App URL
+// Your Google Apps Script Web App URL. Jika WEBHOOK_SECRET diisi di Kode.gs,
+// tambahkan "?secret=<nilai_WEBHOOK_SECRET>" di akhir URL ini.
+var url = "change_your_webapp_url";
 
 // Function to set the Telegram webhook
 function setWebhook() {
